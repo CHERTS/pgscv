@@ -50,6 +50,7 @@ services:
 #  - postgres/settings
 #  - postgres/storage
 #  - postgres/tables
+#  - postgres/tables_bloat
 #  - postgres/wal
 #  - postgres/custom
 #  - pgbouncer/pgscv
