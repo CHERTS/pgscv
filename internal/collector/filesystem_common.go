@@ -1,12 +1,14 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
 	"bufio"
 	"fmt"
-	"github.com/cherts/pgscv/internal/log"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/cherts/pgscv/internal/log"
 )
 
 // mount describes properties of mounted filesystems

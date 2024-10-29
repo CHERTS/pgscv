@@ -1,3 +1,4 @@
+// Package http is a pgSCV http helper
 package http
 
 import (
@@ -6,11 +7,16 @@ import (
 	"time"
 )
 
+// Status code
 const (
-	StatusOK           = http.StatusOK           // 200
-	StatusBadRequest   = http.StatusBadRequest   // 400
-	StatusUnauthorized = http.StatusUnauthorized // 401
-	StatusNotFound     = http.StatusNotFound     // 404
+	// Code 200
+	StatusOK = http.StatusOK
+	// Code 400
+	StatusBadRequest = http.StatusBadRequest
+	// Code 401
+	StatusUnauthorized = http.StatusUnauthorized
+	// Code 404
+	StatusNotFound = http.StatusNotFound
 )
 
 // Client defines local wrapper on standard http.Client.

@@ -1,13 +1,15 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
-	"github.com/jackc/pgx/v4"
+	"strconv"
+	"strings"
+
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/cherts/pgscv/internal/store"
+	"github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
-	"strconv"
-	"strings"
 )
 
 const postgresFunctionsQuery = "SELECT current_database() AS database, schemaname AS schema, funcname AS function, calls, total_time, self_time FROM pg_stat_user_functions"

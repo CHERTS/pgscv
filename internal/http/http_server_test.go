@@ -16,11 +16,11 @@ func TestAuthConfig_Validate(t *testing.T) {
 		valid    bool
 		cfg      AuthConfig
 		wantAuth bool
-		wantTls  bool
+		wantTLS  bool
 	}{
-		{valid: true, cfg: AuthConfig{}, wantAuth: false, wantTls: false},
-		{valid: true, cfg: AuthConfig{Username: "user", Password: "pass"}, wantAuth: true, wantTls: false},
-		{valid: true, cfg: AuthConfig{Keyfile: "key", Certfile: "cert"}, wantAuth: false, wantTls: true},
+		{valid: true, cfg: AuthConfig{}, wantAuth: false, wantTLS: false},
+		{valid: true, cfg: AuthConfig{Username: "user", Password: "pass"}, wantAuth: true, wantTLS: false},
+		{valid: true, cfg: AuthConfig{Keyfile: "key", Certfile: "cert"}, wantAuth: false, wantTLS: true},
 		{valid: false, cfg: AuthConfig{Username: "user", Password: ""}},
 		{valid: false, cfg: AuthConfig{Username: "", Password: "pass"}},
 		{valid: false, cfg: AuthConfig{Keyfile: "key", Certfile: ""}},
@@ -32,7 +32,7 @@ func TestAuthConfig_Validate(t *testing.T) {
 		if tc.valid {
 			assert.NoError(t, err)
 			assert.Equal(t, tc.wantAuth, auth)
-			assert.Equal(t, tc.wantTls, tls)
+			assert.Equal(t, tc.wantTLS, tls)
 		} else {
 			assert.Error(t, err)
 		}

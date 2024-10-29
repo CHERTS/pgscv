@@ -1,14 +1,16 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
 	"context"
+	"regexp"
+	"strconv"
+	"strings"
+
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
-	"regexp"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -82,8 +84,8 @@ type postgresActivityCollector struct {
 
 // NewPostgresActivityCollector returns a new Collector exposing postgres activity stats.
 // For details see:
-//   1. https://www.postgresql.org/docs/current/monitoring-stats.html#PG-STAT-ACTIVITY-VIEW
-//   2. https://www.postgresql.org/docs/current/view-pg-prepared-xacts.html
+//  1. https://www.postgresql.org/docs/current/monitoring-stats.html#PG-STAT-ACTIVITY-VIEW
+//  2. https://www.postgresql.org/docs/current/view-pg-prepared-xacts.html
 func NewPostgresActivityCollector(constLabels labels, settings model.CollectorSettings) (Collector, error) {
 	return &postgresActivityCollector{
 		up: newBuiltinTypedDesc(

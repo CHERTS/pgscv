@@ -1,8 +1,10 @@
+// Package filter is a pgSCV filter
 package filter
 
 import (
-	"github.com/cherts/pgscv/internal/log"
 	"regexp"
+
+	"github.com/cherts/pgscv/internal/log"
 )
 
 // Filter describes settings for filtering stats values for metrics.

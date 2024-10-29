@@ -1,12 +1,14 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
 	"fmt"
+	"net"
+	"strings"
+
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/prometheus/client_golang/prometheus"
-	"net"
-	"strings"
 )
 
 type networkCollector struct {
@@ -14,6 +16,7 @@ type networkCollector struct {
 	publicAddresses  typedDesc
 }
 
+// NewNetworkCollector returns a new Collector exposing network interfaces addresses.
 func NewNetworkCollector(constLabels labels, settings model.CollectorSettings) (Collector, error) {
 	return &networkCollector{
 		publicAddresses: newBuiltinTypedDesc(

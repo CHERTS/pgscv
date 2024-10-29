@@ -1,15 +1,17 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
 	"fmt"
-	"github.com/cherts/pgscv/internal/log"
-	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
-	"github.com/prometheus/client_golang/prometheus"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/cherts/pgscv/internal/log"
+	"github.com/cherts/pgscv/internal/model"
+	"github.com/cherts/pgscv/internal/store"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // postgresSettingsCollector defines metric descriptors and stats store.

@@ -1,16 +1,18 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
 	"database/sql"
-	"github.com/jackc/pgx/v4"
+	"regexp"
+	"strconv"
+	"strings"
+
 	"github.com/cherts/pgscv/internal/filter"
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/cherts/pgscv/internal/store"
+	"github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
-	"regexp"
-	"strconv"
-	"strings"
 )
 
 // labels is a local wrapper over prometheus.Labels which is a simple map[string]string.

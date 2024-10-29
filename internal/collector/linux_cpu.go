@@ -1,18 +1,20 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/cherts/pgscv/internal/log"
-	"github.com/cherts/pgscv/internal/model"
-	"github.com/prometheus/client_golang/prometheus"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/cherts/pgscv/internal/log"
+	"github.com/cherts/pgscv/internal/model"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type cpuCollector struct {

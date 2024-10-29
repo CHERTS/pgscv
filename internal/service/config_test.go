@@ -36,17 +36,17 @@ func Test_parseDSNEnv(t *testing.T) {
 		valid    bool
 		prefix   string
 		key      string
-		wantId   string
+		wantID   string
 		wantType string
 	}{
-		{valid: true, prefix: "POSTGRES_DSN", key: "POSTGRES_DSN", wantId: "postgres", wantType: "postgres"},
-		{valid: true, prefix: "POSTGRES_DSN", key: "POSTGRES_DSN_POSTGRES_123", wantId: "POSTGRES_123", wantType: "postgres"},
-		{valid: true, prefix: "POSTGRES_DSN", key: "POSTGRES_DSN1", wantId: "1", wantType: "postgres"},
-		{valid: true, prefix: "POSTGRES_DSN", key: "POSTGRES_DSN_POSTGRES_5432", wantId: "POSTGRES_5432", wantType: "postgres"},
-		{valid: true, prefix: "PGBOUNCER_DSN", key: "PGBOUNCER_DSN", wantId: "pgbouncer", wantType: "pgbouncer"},
-		{valid: true, prefix: "PGBOUNCER_DSN", key: "PGBOUNCER_DSN_PGBOUNCER_123", wantId: "PGBOUNCER_123", wantType: "pgbouncer"},
-		{valid: true, prefix: "PGBOUNCER_DSN", key: "PGBOUNCER_DSN1", wantId: "1", wantType: "pgbouncer"},
-		{valid: true, prefix: "PGBOUNCER_DSN", key: "PGBOUNCER_DSN_PGBOUNCER_6432", wantId: "PGBOUNCER_6432", wantType: "pgbouncer"},
+		{valid: true, prefix: "POSTGRES_DSN", key: "POSTGRES_DSN", wantID: "postgres", wantType: "postgres"},
+		{valid: true, prefix: "POSTGRES_DSN", key: "POSTGRES_DSN_POSTGRES_123", wantID: "POSTGRES_123", wantType: "postgres"},
+		{valid: true, prefix: "POSTGRES_DSN", key: "POSTGRES_DSN1", wantID: "1", wantType: "postgres"},
+		{valid: true, prefix: "POSTGRES_DSN", key: "POSTGRES_DSN_POSTGRES_5432", wantID: "POSTGRES_5432", wantType: "postgres"},
+		{valid: true, prefix: "PGBOUNCER_DSN", key: "PGBOUNCER_DSN", wantID: "pgbouncer", wantType: "pgbouncer"},
+		{valid: true, prefix: "PGBOUNCER_DSN", key: "PGBOUNCER_DSN_PGBOUNCER_123", wantID: "PGBOUNCER_123", wantType: "pgbouncer"},
+		{valid: true, prefix: "PGBOUNCER_DSN", key: "PGBOUNCER_DSN1", wantID: "1", wantType: "pgbouncer"},
+		{valid: true, prefix: "PGBOUNCER_DSN", key: "PGBOUNCER_DSN_PGBOUNCER_6432", wantID: "PGBOUNCER_6432", wantType: "pgbouncer"},
 		{valid: false, prefix: "POSTGRES_DSN", key: "POSTGRES_DSN_"},
 		{valid: false, prefix: "POSTGRES_DSN", key: "INVALID"},
 		{valid: false, prefix: "INVALID", key: "INVALID"},
@@ -56,7 +56,7 @@ func Test_parseDSNEnv(t *testing.T) {
 		gotID, gotCS, err := parseDSNEnv(tc.prefix, tc.key, "conninfo")
 		if tc.valid {
 			assert.NoError(t, err)
-			assert.Equal(t, tc.wantId, gotID)
+			assert.Equal(t, tc.wantID, gotID)
 			assert.Equal(t, ConnSetting{ServiceType: tc.wantType, Conninfo: "conninfo"}, gotCS)
 		} else {
 			assert.Error(t, err)
@@ -69,12 +69,12 @@ func Test_parseURLEnv(t *testing.T) {
 		valid    bool
 		prefix   string
 		key      string
-		wantId   string
+		wantID   string
 		wantType string
 	}{
-		{valid: true, prefix: "PATRONI_URL", key: "PATRONI_URL", wantId: "patroni", wantType: "patroni"},
-		{valid: true, prefix: "PATRONI_URL", key: "PATRONI_URL1", wantId: "1", wantType: "patroni"},
-		{valid: true, prefix: "PATRONI_URL", key: "PATRONI_URL_PATRONI_123", wantId: "PATRONI_123", wantType: "patroni"},
+		{valid: true, prefix: "PATRONI_URL", key: "PATRONI_URL", wantID: "patroni", wantType: "patroni"},
+		{valid: true, prefix: "PATRONI_URL", key: "PATRONI_URL1", wantID: "1", wantType: "patroni"},
+		{valid: true, prefix: "PATRONI_URL", key: "PATRONI_URL_PATRONI_123", wantID: "PATRONI_123", wantType: "patroni"},
 		//
 		{valid: false, prefix: "PATRONI_URL", key: "PATRONI_URL_"},
 		{valid: false, prefix: "PATRONI_URL", key: "INVALID"},
@@ -85,7 +85,7 @@ func Test_parseURLEnv(t *testing.T) {
 		gotID, gotCS, err := parseURLEnv(tc.prefix, tc.key, "baseurl")
 		if tc.valid {
 			assert.NoError(t, err)
-			assert.Equal(t, tc.wantId, gotID)
+			assert.Equal(t, tc.wantID, gotID)
 			assert.Equal(t, ConnSetting{ServiceType: tc.wantType, BaseURL: "baseurl"}, gotCS)
 		} else {
 			assert.Error(t, err)

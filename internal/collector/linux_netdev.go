@@ -1,16 +1,18 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
 	"bufio"
 	"fmt"
-	"github.com/cherts/pgscv/internal/filter"
-	"github.com/cherts/pgscv/internal/log"
-	"github.com/cherts/pgscv/internal/model"
-	"github.com/prometheus/client_golang/prometheus"
 	"io"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/cherts/pgscv/internal/filter"
+	"github.com/cherts/pgscv/internal/log"
+	"github.com/cherts/pgscv/internal/model"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type netdevCollector struct {

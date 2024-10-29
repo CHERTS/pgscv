@@ -1,13 +1,15 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
 	"fmt"
-	"github.com/cherts/pgscv/internal/log"
-	"github.com/cherts/pgscv/internal/model"
-	"github.com/prometheus/client_golang/prometheus"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/cherts/pgscv/internal/log"
+	"github.com/cherts/pgscv/internal/model"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type loadaverageCollector struct {

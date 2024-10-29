@@ -1,9 +1,11 @@
+// Package store is a pgSCV database helper
 package store
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
+
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/jackc/pgx/v4"

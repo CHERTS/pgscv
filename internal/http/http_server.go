@@ -1,3 +1,4 @@
+// Package http is a pgSCV http helper
 package http
 
 import (

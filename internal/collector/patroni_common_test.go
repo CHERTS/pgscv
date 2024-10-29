@@ -8,22 +8,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_requestApiLiveness(t *testing.T) {
+func Test_requestAPILivenesss(t *testing.T) {
 	ts := http.TestServer(t, http.StatusOK, "")
 	defer ts.Close()
 
 	c := http.NewClient(http.ClientConfig{})
 
-	err := requestApiLiveness(c, ts.URL)
+	err := requestAPILiveness(c, ts.URL)
 	assert.NoError(t, err)
 
 	// Test errors
-	err = requestApiLiveness(c, "http://[")
+	err = requestAPILiveness(c, "http://[")
 	assert.Error(t, err)
 	fmt.Println(err)
 }
 
-func Test_requestApiPatroni(t *testing.T) {
+func Test_requestAPIPatroni(t *testing.T) {
 	testcases := []struct {
 		name     string
 		response string
@@ -66,7 +66,7 @@ func Test_requestApiPatroni(t *testing.T) {
 
 			c := http.NewClient(http.ClientConfig{})
 
-			got, err := requestApiPatroni(c, ts.URL)
+			got, err := requestAPIPatroni(c, ts.URL)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.want, got)
 		})
@@ -75,7 +75,7 @@ func Test_requestApiPatroni(t *testing.T) {
 	// Test errors
 	t.Run("invalid url", func(t *testing.T) {
 		c := http.NewClient(http.ClientConfig{})
-		_, err := requestApiPatroni(c, "http://127.0.0.1:30080/invalid")
+		_, err := requestAPIPatroni(c, "http://127.0.0.1:30080/invalid")
 		assert.Error(t, err)
 	})
 }
@@ -148,7 +148,7 @@ func Test_parsePatroniResponse(t *testing.T) {
 	}
 }
 
-func Test_requestApiHistory(t *testing.T) {
+func Test_requestAPIHistory(t *testing.T) {
 	ts := http.TestServer(t, http.StatusOK,
 		`[[1, 1234, "no recovery target specified", "2021-06-30T00:00:00.123456+00:00"],[2, 2345, "no recovery target specified", "2021-06-30T10:00:00+00:00"]]`,
 	)
@@ -156,7 +156,7 @@ func Test_requestApiHistory(t *testing.T) {
 
 	c := http.NewClient(http.ClientConfig{})
 
-	got, err := requestApiHistory(c, ts.URL)
+	got, err := requestAPIHistory(c, ts.URL)
 	assert.NoError(t, err)
 	assert.EqualValues(t, apiHistoryResponse{
 		{float64(1), float64(1234), "no recovery target specified", "2021-06-30T00:00:00.123456+00:00"},
@@ -164,7 +164,7 @@ func Test_requestApiHistory(t *testing.T) {
 	}, got)
 
 	// Test errors
-	_, err = requestApiHistory(c, "http://127.0.0.1:30080/invalid")
+	_, err = requestAPIHistory(c, "http://127.0.0.1:30080/invalid")
 	assert.Error(t, err)
 }
 

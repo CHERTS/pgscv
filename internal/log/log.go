@@ -1,9 +1,11 @@
+// Package log is a pgSCV logger
 package log
 
 import (
 	"fmt"
-	"github.com/rs/zerolog"
 	"os"
+
+	"github.com/rs/zerolog"
 )
 
 // Logger is the global logger with predefined settings
@@ -28,6 +30,7 @@ func SetLevel(level string) {
 	}
 }
 
+// New create logger
 func New() zerolog.Logger {
 	var logger = Logger
 	return logger

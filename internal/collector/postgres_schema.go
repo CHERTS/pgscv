@@ -1,13 +1,15 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
-	"github.com/jackc/pgx/v4"
+	"strings"
+
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/cherts/pgscv/internal/store"
+	"github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
-	"strings"
 )
 
 // postgresSchemaCollector defines metric descriptors and stats store.
@@ -21,7 +23,7 @@ type postgresSchemaCollector struct {
 	difftypefkey typedDesc
 }
 
-// NewPostgresSchemaCollector returns a new Collector exposing postgres schema stats. Stats are based on different
+// NewPostgresSchemasCollector returns a new Collector exposing postgres schema stats. Stats are based on different
 // sources inside system catalog.
 func NewPostgresSchemasCollector(constLabels labels, settings model.CollectorSettings) (Collector, error) {
 	return &postgresSchemaCollector{

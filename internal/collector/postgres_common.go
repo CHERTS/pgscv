@@ -1,3 +1,4 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
@@ -10,6 +11,7 @@ import (
 	"github.com/cherts/pgscv/internal/store"
 )
 
+// Postgres server versions
 const (
 	// Postgres server versions numeric representations.
 	PostgresV95 = 90500
@@ -23,7 +25,7 @@ const (
 	PostgresV16 = 160000
 	PostgresV17 = 170000
 
-	// Minimal required version is 9.5.
+	// Minimal required version is 9.5
 	PostgresVMinNum = PostgresV95
 	PostgresVMinStr = "9.5"
 )

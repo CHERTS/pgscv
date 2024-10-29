@@ -2,12 +2,14 @@ package http
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
+// TestServer create http test server
 func TestServer(t *testing.T, code int, response string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if code == http.StatusOK {
@@ -23,6 +25,7 @@ func TestServer(t *testing.T, code int, response string) *httptest.Server {
 	}))
 }
 
+// TestFileServer create http test server
 func TestFileServer(_ *testing.T, dir string) *httptest.Server {
 	return httptest.NewServer(http.FileServer(http.Dir(dir)))
 }

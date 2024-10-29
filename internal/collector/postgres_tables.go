@@ -1,3 +1,4 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (

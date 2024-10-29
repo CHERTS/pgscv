@@ -1,3 +1,4 @@
+// Package model is a pgSCV model
 package model
 
 import (

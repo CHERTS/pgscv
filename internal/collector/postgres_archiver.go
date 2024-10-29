@@ -1,11 +1,13 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
+	"strconv"
+
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
-	"strconv"
 )
 
 const walArchivingQuery = "SELECT archived_count, failed_count, " +

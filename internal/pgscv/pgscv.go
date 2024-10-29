@@ -1,3 +1,4 @@
+// Package pgscv is a pgSCV main helper
 package pgscv
 
 import (

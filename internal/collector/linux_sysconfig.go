@@ -1,12 +1,10 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/cherts/pgscv/internal/log"
-	"github.com/cherts/pgscv/internal/model"
-	"github.com/prometheus/client_golang/prometheus"
 	"io"
 	"os"
 	"path"
@@ -14,6 +12,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/cherts/pgscv/internal/log"
+	"github.com/cherts/pgscv/internal/model"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type systemCollector struct {
@@ -27,7 +29,7 @@ type systemCollector struct {
 	btime      typedDesc
 }
 
-// NewSystemCollector returns a new Collector exposing system-wide stats.
+// NewSysconfigCollector returns a new Collector exposing system-wide stats.
 func NewSysconfigCollector(constLabels labels, settings model.CollectorSettings) (Collector, error) {
 	return &systemCollector{
 		sysctlList: []string{

@@ -1,3 +1,4 @@
+// Package main is a pgSCV main package
 package main
 
 import (

@@ -1,3 +1,4 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
@@ -387,7 +388,7 @@ func (c *postgresStatementsCollector) Update(config Config, ch chan<- prometheus
 	return nil
 }
 
-// postgresStatementsStat represents stats values for single statement based on pg_stat_statements.
+// postgresStatementStat represents stats values for single statement based on pg_stat_statements.
 type postgresStatementStat struct {
 	database          string
 	user              string
@@ -521,26 +522,26 @@ func parsePostgresStatementsStats(r *model.PGResult, labelNames []string) map[st
 
 // selectStatementsQuery returns suitable statements query depending on passed version.
 func selectStatementsQuery(version int, schema string, notrackmode bool, topK int) string {
-	var query_columm string
+	var queryColumm string
 	if notrackmode {
-		query_columm = "null"
+		queryColumm = "null"
 	} else {
-		query_columm = "p.query"
+		queryColumm = "p.query"
 	}
 	if version < PostgresV13 {
 		if topK > 0 {
-			return fmt.Sprintf(postgresStatementsQuery12TopK, query_columm, schema)
+			return fmt.Sprintf(postgresStatementsQuery12TopK, queryColumm, schema)
 		}
-		return fmt.Sprintf(postgresStatementsQuery12, query_columm, schema)
+		return fmt.Sprintf(postgresStatementsQuery12, queryColumm, schema)
 	} else if version > PostgresV12 && version < PostgresV17 {
 		if topK > 0 {
-			return fmt.Sprintf(postgresStatementsQuery16TopK, query_columm, schema)
+			return fmt.Sprintf(postgresStatementsQuery16TopK, queryColumm, schema)
 		}
-		return fmt.Sprintf(postgresStatementsQuery16, query_columm, schema)
+		return fmt.Sprintf(postgresStatementsQuery16, queryColumm, schema)
 	} else {
 		if topK > 0 {
-			return fmt.Sprintf(postgresStatementsQueryLatestTopK, query_columm, schema)
+			return fmt.Sprintf(postgresStatementsQueryLatestTopK, queryColumm, schema)
 		}
-		return fmt.Sprintf(postgresStatementsQueryLatest, query_columm, schema)
+		return fmt.Sprintf(postgresStatementsQueryLatest, queryColumm, schema)
 	}
 }

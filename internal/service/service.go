@@ -1,3 +1,4 @@
+// Package service is a pgSCV service helper
 package service
 
 import (

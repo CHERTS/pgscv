@@ -1,19 +1,21 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v4"
-	"github.com/cherts/pgscv/internal/log"
-	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
-	"github.com/prometheus/client_golang/prometheus"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/cherts/pgscv/internal/log"
+	"github.com/cherts/pgscv/internal/model"
+	"github.com/cherts/pgscv/internal/store"
+	"github.com/jackc/pgx/v4"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (

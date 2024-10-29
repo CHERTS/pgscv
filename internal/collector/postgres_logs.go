@@ -1,16 +1,18 @@
+// Package collector is a pgSCV collectors
 package collector
 
 import (
 	"context"
+	"io"
+	"regexp"
+	"strings"
+	"sync"
+
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/cherts/pgscv/internal/store"
 	"github.com/nxadm/tail"
 	"github.com/prometheus/client_golang/prometheus"
-	"io"
-	"regexp"
-	"strings"
-	"sync"
 )
 
 // Current implementation has an issue described here: https://github.com/nxadm/tail/issues/18.
