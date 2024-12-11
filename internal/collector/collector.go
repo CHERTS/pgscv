@@ -69,6 +69,7 @@ func (f Factories) RegisterPostgresCollectors(disabled []string) {
 		"postgres/settings":          NewPostgresSettingsCollector,
 		"postgres/storage":           NewPostgresStorageCollector,
 		"postgres/tables":            NewPostgresTablesCollector,
+		"postgres/tables_bloat":      NewPostgresBloatTablesCollector,
 		"postgres/wal":               NewPostgresWalCollector,
 		"postgres/custom":            NewPostgresCustomCollector,
 	}
