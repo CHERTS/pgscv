@@ -13,10 +13,16 @@ import (
 
 const (
 	// Query for Postgres version 9.6 and older.
-	postgresReplicationSlotQuery96 = "SELECT database, slot_name, slot_type, active, pg_current_xlog_location() - restart_lsn AS since_restart_bytes FROM pg_replication_slots"
+	postgresReplicationSlotQuery96 = "SELECT database, slot_name, slot_type, active, " +
+		"CASE WHEN pg_is_in_recovery() THEN pg_xlog_location_diff(pg_current_xlog_location(), restart_lsn) " +
+		"ELSE pg_xlog_location_diff(pg_current_xlog_location(), restart_lsn) END AS since_restart_bytes " +
+		"FROM pg_replication_slots"
 
 	// Query for Postgres versions from 10 and newer.
-	postgresReplicationSlotQueryLatest = "SELECT database, slot_name, slot_type, active, pg_current_wal_lsn() - restart_lsn AS since_restart_bytes FROM pg_replication_slots"
+	postgresReplicationSlotQueryLatest = "SELECT database, slot_name, slot_type, active, " +
+		"CASE WHEN pg_is_in_recovery() THEN pg_wal_lsn_diff(pg_last_wal_receive_lsn(), restart_lsn) " +
+		"ELSE pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) END AS since_restart_bytes " +
+		"FROM pg_replication_slots"
 )
 
 type postgresReplicationSlotCollector struct {
