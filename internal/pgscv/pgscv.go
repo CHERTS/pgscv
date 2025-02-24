@@ -47,6 +47,7 @@ func Start(ctx context.Context, config *Config) error {
 		SkipConnErrorMode:  config.SkipConnErrorMode,
 		ConnTimeout:        config.ConnTimeout,
 		ThrottlingInterval: config.ThrottlingInterval,
+		ConcurrencyLimit:   config.ConcurrencyLimit,
 	}
 
 	if len(config.ServicesConnsSettings) == 0 && config.DiscoveryServices == nil {
@@ -134,6 +135,7 @@ func subscribeYandex(ds *discovery.Discovery, config *Config, serviceRepo *servi
 				ConstLabels:        &constLabels,
 				TargetLabels:       &targetLabels,
 				ConnTimeout:        config.ConnTimeout,
+				ConcurrencyLimit:   config.ConcurrencyLimit,
 			}
 			var cs = make(service.ConnsSettings, len(services))
 			for serviceID, svc := range services {

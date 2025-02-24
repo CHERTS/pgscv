@@ -56,6 +56,7 @@ type Config struct {
 	TargetLabels       *map[string]*map[string]string
 	ConnTimeout        int  // in seconds
 	ThrottlingInterval *int // in seconds, default 25
+	ConcurrencyLimit   *int
 }
 
 // Collector is an interface for prometheus.Collector.
@@ -269,15 +270,16 @@ func (repo *Repository) setupServices(config Config) error {
 			if service.Collector == nil {
 				factories := collector.Factories{}
 				collectorConfig := collector.Config{
-					NoTrackMode:     config.NoTrackMode,
-					ServiceType:     service.ConnSettings.ServiceType,
-					ConnString:      service.ConnSettings.Conninfo,
-					Settings:        config.CollectorsSettings,
-					DatabasesRE:     config.DatabasesRE,
-					CollectTopTable: config.CollectTopTable,
-					CollectTopIndex: config.CollectTopIndex,
-					CollectTopQuery: config.CollectTopQuery,
-					ConnTimeout:     config.ConnTimeout,
+					NoTrackMode:      config.NoTrackMode,
+					ServiceType:      service.ConnSettings.ServiceType,
+					ConnString:       service.ConnSettings.Conninfo,
+					Settings:         config.CollectorsSettings,
+					DatabasesRE:      config.DatabasesRE,
+					CollectTopTable:  config.CollectTopTable,
+					CollectTopIndex:  config.CollectTopIndex,
+					CollectTopQuery:  config.CollectTopQuery,
+					ConnTimeout:      config.ConnTimeout,
+					ConcurrencyLimit: config.ConcurrencyLimit,
 				}
 				if config.ConstLabels != nil && (*config.ConstLabels)[id] != nil {
 					collectorConfig.ConstLabels = (*config.ConstLabels)[id]

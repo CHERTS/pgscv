@@ -32,13 +32,14 @@ type Config struct {
 	// DatabasesRE defines regexp with databases from which builtin metrics should be collected.
 	DatabasesRE *regexp.Regexp
 	// Settings defines collectors settings propagated from main YAML configuration.
-	Settings        model.CollectorsSettings
-	CollectTopTable int
-	CollectTopIndex int
-	CollectTopQuery int
-	ConstLabels     *map[string]string
-	TargetLabels    *map[string]string
-	ConnTimeout     int // in seconds
+	Settings         model.CollectorsSettings
+	CollectTopTable  int
+	CollectTopIndex  int
+	CollectTopQuery  int
+	ConstLabels      *map[string]string
+	TargetLabels     *map[string]string
+	ConnTimeout      int // in seconds
+	ConcurrencyLimit *int
 }
 
 // postgresServiceConfig defines Postgres-specific stuff required during collecting Postgres metrics.
@@ -61,6 +62,7 @@ type postgresServiceConfig struct {
 	pgStatStatementsDatabase string
 	// pgStatStatementsSchema defines the schema name where pg_stat_statements is installed
 	pgStatStatementsSchema string
+	rolConnLimit           int
 }
 
 func newPostgresServiceConfig(connStr string, connTimeout int) (postgresServiceConfig, error) {
@@ -89,6 +91,17 @@ func newPostgresServiceConfig(connStr string, connTimeout int) (postgresServiceC
 	defer conn.Close()
 
 	var setting string
+
+	// Get role connection limit.
+	err = conn.Conn().QueryRow(context.Background(), "SELECT rolconnlimit FROM pg_roles WHERE rolname = user").Scan(&setting)
+	if err != nil {
+		return config, fmt.Errorf("failed to get rolconnlimit setting from pg_roles, %s, please check user grants", err)
+	}
+	rolConnLimit, err := strconv.ParseInt(setting, 10, 64)
+	if err != nil {
+		return config, err
+	}
+	config.rolConnLimit = int(rolConnLimit)
 
 	// Get Postgres block size.
 	err = conn.Conn().QueryRow(context.Background(), "SELECT setting FROM pg_settings WHERE name = 'block_size'").Scan(&setting)

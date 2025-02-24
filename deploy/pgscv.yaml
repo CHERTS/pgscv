@@ -8,6 +8,7 @@
 #collect_top_query: 10
 #collect_top_table: 10
 #collect_top_index: 10
+#concurrency_limit: 5
 #skip_conn_error_mode: false
 #url_prefix: "example.com"
 #conn_timeout: 3

@@ -3,6 +3,13 @@ package pgscv
 
 import (
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+
 	sd "github.com/cherts/pgscv/discovery"
 	"github.com/cherts/pgscv/internal/http"
 	"github.com/cherts/pgscv/internal/log"
@@ -10,12 +17,6 @@ import (
 	"github.com/cherts/pgscv/internal/service"
 	"github.com/jackc/pgx/v4"
 	"gopkg.in/yaml.v2"
-	"io/fs"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -47,6 +48,7 @@ type Config struct {
 	ConnTimeout           int    `yaml:"conn_timeout"`
 	URLPrefix             string `yaml:"url_prefix"` // Url prefix
 	ThrottlingInterval    *int   `yaml:"throttling_interval"`
+	ConcurrencyLimit      *int   `yaml:"concurrency_limit"`
 }
 
 // NewConfig creates new config based on config file or return default config if config file is not specified.
@@ -127,6 +129,9 @@ func NewConfig(configFilePath string) (*Config, error) {
 		}
 		if configFromEnv.ThrottlingInterval != nil {
 			configFromFile.ThrottlingInterval = configFromEnv.ThrottlingInterval
+		}
+		if configFromEnv.ConcurrencyLimit != nil {
+			configFromFile.ConcurrencyLimit = configFromEnv.ConcurrencyLimit
 		}
 		return configFromFile, nil
 	}
@@ -281,6 +286,9 @@ func (c *Config) Validate() error {
 	}
 	if c.CollectTopIndex > 0 {
 		log.Infof("TopIndex: limit (%d indexes) enabled", c.CollectTopIndex)
+	}
+	if c.ConcurrencyLimit != nil {
+		log.Infof("ConcurrencyLimit: %d connection limit set for DB", *c.ConcurrencyLimit)
 	}
 	if c.ConnTimeout > 0 {
 		log.Infof("ConnTimeout: %d seconds timeout set for connecting to DB", c.ConnTimeout)
@@ -468,6 +476,12 @@ func newConfigFromEnv() (*Config, error) {
 				return nil, fmt.Errorf("invalid setting PGSCV_THROTTLING_INTERVAL, value '%s': %s", value, err)
 			}
 			config.ThrottlingInterval = &throttlingInterval
+		case "PGSCV_CONCURRENCY_LIMIT":
+			concurrencyLimit, err := strconv.Atoi(value)
+			if err != nil {
+				return nil, fmt.Errorf("invalid setting PGSCV_CONCURRENCY_LIMIT, value '%s', allowed only digits", value)
+			}
+			config.ConcurrencyLimit = &concurrencyLimit
 		}
 	}
 	return config, nil
