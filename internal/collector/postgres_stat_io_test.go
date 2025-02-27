@@ -25,6 +25,9 @@ func TestPostgresStatIOCollector_Update(t *testing.T) {
 			"postgres_stat_io_reuses",
 			"postgres_stat_io_fsyncs",
 			"postgres_stat_io_fsync_time",
+			"postgres_stat_io_read_bytes",
+			"postgres_stat_io_write_bytes",
+			"postgres_stat_io_extend_bytes",
 		},
 		collector: NewPostgresStatIOCollector,
 		service:   model.ServiceTypePostgresql,
@@ -48,16 +51,18 @@ func Test_parsePostgresStatIO(t *testing.T) {
 					{Name: []byte("backend_type")}, {Name: []byte("object")}, {Name: []byte("context")},
 					{Name: []byte("reads")}, {Name: []byte("read_time")}, {Name: []byte("writes")}, {Name: []byte("write_time")},
 					{Name: []byte("writebacks")}, {Name: []byte("writeback_time")}, {Name: []byte("extends")}, {Name: []byte("extend_time")},
-					{Name: []byte("op_bytes")}, {Name: []byte("hits")}, {Name: []byte("evictions")}, {Name: []byte("reuses")},
+					{Name: []byte("hits")}, {Name: []byte("evictions")}, {Name: []byte("reuses")},
 					{Name: []byte("fsyncs")}, {Name: []byte("fsync_time")},
+					{Name: []byte("read_bytes")}, {Name: []byte("write_bytes")}, {Name: []byte("extends_bytes")},
 				},
 				Rows: [][]sql.NullString{
 					{
 						{String: "autovacuum launcher", Valid: true}, {String: "relation", Valid: true}, {String: "bulkread", Valid: true},
 						{String: "0", Valid: true}, {String: "0", Valid: true}, {String: "0", Valid: true}, {String: "0", Valid: true},
 						{String: "0", Valid: true}, {String: "0", Valid: true}, {String: "0", Valid: true}, {String: "0", Valid: true},
-						{String: "8192", Valid: true}, {String: "0", Valid: true}, {String: "0", Valid: true}, {String: "0", Valid: true},
+						{String: "0", Valid: true}, {String: "0", Valid: true}, {String: "0", Valid: true},
 						{String: "0", Valid: true}, {String: "0", Valid: true},
+						{String: "0", Valid: true}, {String: "0", Valid: true}, {String: "0", Valid: true},
 					},
 				},
 			},
@@ -66,8 +71,9 @@ func Test_parsePostgresStatIO(t *testing.T) {
 					BackendType: "autovacuum launcher", IoObject: "relation", IoContext: "bulkread",
 					Reads: 0, ReadTime: 0, Writes: 0, WriteTime: 0,
 					Writebacks: 0, WritebackTime: 0, Extends: 0, ExtendTime: 0,
-					OpBytes: 8192, Hits: 0, Evictions: 0, Reuses: 0,
+					Hits: 0, Evictions: 0, Reuses: 0,
 					Fsyncs: 0, FsyncTime: 0,
+					ReadBytes: 0, WriteBytes: 0, ExtendsBytes: 0,
 				},
 			},
 		},
@@ -77,6 +83,23 @@ func Test_parsePostgresStatIO(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := parsePostgresStatIO(tc.res, []string{"backend_type", "object", "context"})
 			assert.EqualValues(t, tc.want, got)
+		})
+	}
+}
+
+func Test_selectStatIOQuery(t *testing.T) {
+	var testcases = []struct {
+		version int
+		want    string
+	}{
+		{version: 160000, want: postgresStatIoQuery17},
+		{version: 170000, want: postgresStatIoQuery17},
+		{version: 180000, want: postgresStatIoQueryLatest},
+	}
+
+	for _, tc := range testcases {
+		t.Run("", func(t *testing.T) {
+			assert.Equal(t, tc.want, selectStatIOQuery(tc.version))
 		})
 	}
 }
