@@ -28,28 +28,24 @@ echo "host all pgscv 127.0.0.1/32 trust" >> ${MAIN_DATADIR}/pg_hba.conf
 # run main postgres
 echo "Run main PostgreSQL v${PG_VER} via pg_ctl..."
 su - postgres -c "/usr/lib/postgresql/${PG_VER}/bin/pg_ctl -w -t 30 -l /var/run/postgresql/startup-main.log -D ${MAIN_DATADIR} start"
-su - postgres -c "psql -c \"SELECT pg_create_physical_replication_slot('standby_test_slot')\""
 
 # run standby 1 postgres
 echo "Run pg_basebackup..."
-su - postgres -c "pg_basebackup -P -R -X stream -c fast -h 127.0.0.1 -p 5432 -U postgres -D ${STDB1_DATADIR}"
+su - postgres -c "pg_basebackup -P -R -X stream -C -S standby_test_slot -c fast -h 127.0.0.1 -p 5432 -U postgres -D ${STDB1_DATADIR}"
 echo "Creating standby 1 postgresql.auto.conf..."
 cat >> ${STDB1_DATADIR}/postgresql.auto.conf <<EOF
 port = 5433
-primary_slot_name = 'standby_test_slot'
 log_filename = 'postgresql-standby.log'
 EOF
 echo "Run standby PostgreSQL v${PG_VER} via pg_ctl..."
 su - postgres -c "/usr/lib/postgresql/${PG_VER}/bin/pg_ctl -w -t 30 -l /var/run/postgresql/startup-standby.log -D ${STDB1_DATADIR} start"
-su - postgres -c "psql -h 127.0.0.1 -p 5433 -c \"SELECT pg_create_physical_replication_slot('standby_test_slot_cascade')\""
 
 # run cascade standby 2 postgres
 echo "Run pg_basebackup..."
-su - postgres -c "pg_basebackup -P -R -X stream -c fast -h 127.0.0.1 -p 5433 -U postgres -D ${STDB2_DATADIR}"
+su - postgres -c "pg_basebackup -P -R -X stream -C -S standby_test_slot_cascade -c fast -h 127.0.0.1 -p 5433 -U postgres -D ${STDB2_DATADIR}"
 echo "Creating standby 2 postgresql.auto.conf..."
 cat >> ${STDB2_DATADIR}/postgresql.auto.conf <<EOF
 port = 5434
-primary_slot_name = 'standby_test_slot_cascade'
 log_filename = 'postgresql-standby-2.log'
 EOF
 echo "Run standby PostgreSQL v${PG_VER} via pg_ctl..."
