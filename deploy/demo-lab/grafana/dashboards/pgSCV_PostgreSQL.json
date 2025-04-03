@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "PostgreSQL dashboard for pgSCV metrics (Prometheus version, pgSCV 0.12.0 edition)",
+  "description": "PostgreSQL dashboard for pgSCV metrics (Prometheus version, pgSCV 0.14.0 edition)",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -8924,5 +8924,5 @@
   "timezone": "",
   "title": "pgSCV: PostgreSQL",
   "uid": "N6PwjKeGz",
-  "version": 6
+  "version": 8
 }
