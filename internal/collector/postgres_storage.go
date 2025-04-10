@@ -194,7 +194,7 @@ func (c *postgresStorageCollector) Update(config Config, ch chan<- prometheus.Me
 	return nil
 }
 
-// postgresConflictStat represents per-database recovery conflicts stats based on pg_stat_database_conflicts.
+// postgresTempfilesStat
 type postgresTempfilesStat struct {
 	tablespace string
 	tempfiles  float64
