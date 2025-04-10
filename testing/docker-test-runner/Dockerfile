@@ -5,7 +5,7 @@
 # __release_tag__ gosec v2.22.1 was released 2025-02-13
 FROM postgres:16.8
 
-LABEL version="1.0.7"
+LABEL version="1.0.8"
 
 # install dependencies
 RUN apt-get update && \
