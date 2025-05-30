@@ -58,7 +58,7 @@
       }
     ]
   },
-  "description": "System dashboard for pgSCV metrics (Prometheus version, pgSCV 0.9.7 edition)",
+  "description": "System dashboard for pgSCV metrics (Prometheus version, pgSCV v0.9.7 edition)",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "gnetId": 14539,
