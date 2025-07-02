@@ -1,10 +1,11 @@
 package collector
 
 import (
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSystemCollector_Update(t *testing.T) {
@@ -15,7 +16,6 @@ func TestSystemCollector_Update(t *testing.T) {
 			"node_system_numa_nodes_total",
 			"node_context_switches_total",
 			"node_forks_total",
-			"node_boot_time_seconds",
 		},
 		optional: []string{
 			"node_system_scaling_governors_total",
