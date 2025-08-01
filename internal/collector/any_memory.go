@@ -3,10 +3,12 @@ package collector
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 type meminfoCollector struct {
@@ -47,18 +50,23 @@ func NewMeminfoCollector(constLabels labels, settings model.CollectorSettings) (
 
 // Update method collects network interfaces statistics.
 func (c *meminfoCollector) Update(_ Config, ch chan<- prometheus.Metric) error {
-	meminfo, err := getMeminfoStats()
+	memInfo, err := mem.VirtualMemory()
 	if err != nil {
-		return fmt.Errorf("get /proc/meminfo stats failed: %s", err)
+		return fmt.Errorf("failed to get VirtualMemory: %s", err)
 	}
 
-	vmstat, err := getVmstatStats()
+	memInfoData, err := json.MarshalIndent(memInfo, "", "")
 	if err != nil {
-		return fmt.Errorf("get /proc/vmstat stats failed: %s", err)
+		return fmt.Errorf("failed convert VirtualMemory data: %s", err)
 	}
 
-	// Processing meminfo stats.
-	for param, value := range meminfo {
+	var memInfoJSONMap map[string]any
+	if err := json.Unmarshal([]byte(memInfoData), &memInfoJSONMap); err != nil {
+		return fmt.Errorf("failed to read VirtualMemory json data: %s", err)
+	}
+
+	// Processing memInfoJSONMap stats.
+	for param, value := range memInfoJSONMap {
 		param = c.re.ReplaceAllString(param, "_${1}")
 		desc := newBuiltinTypedDesc(
 			descOpts{"node", "memory", param, fmt.Sprintf("Memory information field %s.", param), 0},
@@ -67,80 +75,56 @@ func (c *meminfoCollector) Update(_ Config, ch chan<- prometheus.Metric) error {
 			c.subsysFilters,
 		)
 
-		ch <- desc.newConstMetric(value)
+		ch <- desc.newConstMetric(value.(float64))
+	}
+
+	total := memInfo.Used + memInfo.Free + memInfo.Buffers + memInfo.Cached
+	switch runtime.GOOS {
+	case "windows":
+		total = memInfo.Used + memInfo.Available
+	case "darwin", "openbsd":
+		total = memInfo.Used + memInfo.Free + memInfo.Cached + memInfo.Inactive
+	case "freebsd":
+		total = memInfo.Used + memInfo.Free + memInfo.Cached + memInfo.Inactive + memInfo.Laundry
+	}
+
+	swapInfo, err := mem.SwapMemory()
+	if err != nil {
+		return fmt.Errorf("failed get SwapMemory: %s", err)
 	}
 
 	// MemUsed and SwapUsed are composite metrics and not present in /proc/meminfo.
-	ch <- c.memused.newConstMetric(meminfo["MemTotal"] - meminfo["MemFree"] - meminfo["Buffers"] - meminfo["Cached"])
-	ch <- c.swapused.newConstMetric(meminfo["SwapTotal"] - meminfo["SwapFree"])
+	ch <- c.memused.newConstMetric(float64(total))
+	ch <- c.swapused.newConstMetric(float64(swapInfo.Total) - float64(swapInfo.Free))
 
-	// Processing vmstat stats.
-	for param, value := range vmstat {
-		// Depending on key name, make an assumption about metric type.
-		// Analyzing of vmstat content shows that gauge values have 'nr_' prefix. But without of
-		// strong knowledge of kernel internals this is just an assumption and could be mistaken.
-		t := prometheus.CounterValue
-		if strings.HasPrefix(param, "nr_") {
-			t = prometheus.GaugeValue
+	if runtime.GOOS == "linux" {
+		vmstat, err := getVmstatStats()
+		if err != nil {
+			return fmt.Errorf("get /proc/vmstat stats failed: %s", err)
 		}
 
-		param = c.re.ReplaceAllString(param, "_${1}")
+		// Processing vmstat stats.
+		for param, value := range vmstat {
+			// Depending on key name, make an assumption about metric type.
+			// Analyzing of vmstat content shows that gauge values have 'nr_' prefix. But without of
+			// strong knowledge of kernel internals this is just an assumption and could be mistaken.
+			t := prometheus.CounterValue
+			if strings.HasPrefix(param, "nr_") {
+				t = prometheus.GaugeValue
+			}
 
-		desc := newBuiltinTypedDesc(
-			descOpts{"node", "vmstat", param, fmt.Sprintf("Vmstat information field %s.", param), 0},
-			t, nil, c.constLabels, c.subsysFilters,
-		)
+			param = c.re.ReplaceAllString(param, "_${1}")
 
-		ch <- desc.newConstMetric(value)
+			desc := newBuiltinTypedDesc(
+				descOpts{"node", "vmstat", param, fmt.Sprintf("Vmstat information field %s.", param), 0},
+				t, nil, c.constLabels, c.subsysFilters,
+			)
+
+			ch <- desc.newConstMetric(value)
+		}
 	}
 
 	return nil
-}
-
-// getMeminfoStats is the intermediate function which opens stats file and run stats parser for extracting stats.
-func getMeminfoStats() (map[string]float64, error) {
-	file, err := os.Open("/proc/meminfo")
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = file.Close() }()
-
-	return parseMeminfoStats(file)
-}
-
-// parseMeminfoStats accepts file descriptor, reads file content and produces stats.
-func parseMeminfoStats(r io.Reader) (map[string]float64, error) {
-	log.Debug("parse meminfo stats")
-
-	var (
-		scanner = bufio.NewScanner(r)
-		stats   = map[string]float64{}
-	)
-
-	// Parse line by line, split line to param and value, parse the value to float and save to store.
-	for scanner.Scan() {
-		parts := strings.Fields(scanner.Text())
-
-		if len(parts) < 2 || len(parts) > 3 {
-			return nil, fmt.Errorf("invalid input, '%s': wrong number of values", scanner.Text())
-		}
-
-		param, value := strings.TrimRight(parts[0], ":"), parts[1]
-
-		v, err := strconv.ParseFloat(value, 64)
-		if err != nil {
-			log.Errorf("invalid input, parse '%s' failed: %s, skip", value, err.Error())
-			continue
-		}
-
-		if len(parts) == 3 && parts[2] == "kB" {
-			v *= 1024
-		}
-
-		stats[param] = v
-	}
-
-	return stats, scanner.Err()
 }
 
 // getVmstatStats is the intermediate function which opens stats file and run stats parser for extracting stats.
