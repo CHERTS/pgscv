@@ -55,6 +55,7 @@ func (c *postgresFunctionsCollector) Update(config Config, ch chan<- prometheus.
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	collect := func(conn *store.DB) error {
 		res, err := conn.Query(postgresFunctionsQuery)
@@ -77,7 +78,6 @@ func (c *postgresFunctionsCollector) Update(config Config, ch chan<- prometheus.
 	if config.DatabasesRE == nil {
 		// service discovery case
 		err = collect(conn)
-		conn.Close()
 		return err
 	}
 
@@ -85,8 +85,6 @@ func (c *postgresFunctionsCollector) Update(config Config, ch chan<- prometheus.
 	if err != nil {
 		return err
 	}
-
-	conn.Close()
 
 	pgconfig, err := pgx.ParseConfig(config.ConnString)
 	if err != nil {
@@ -104,8 +102,8 @@ func (c *postgresFunctionsCollector) Update(config Config, ch chan<- prometheus.
 		if err != nil {
 			return err
 		}
+		defer conn.Close()
 		err = collect(conn)
-		conn.Close()
 		if err != nil {
 			return err
 		}

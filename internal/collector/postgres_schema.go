@@ -79,6 +79,7 @@ func (c *postgresSchemaCollector) Update(config Config, ch chan<- prometheus.Met
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	collect := func(conn *store.DB) {
 		// 1. get system catalog size in bytes.
@@ -117,7 +118,6 @@ func (c *postgresSchemaCollector) Update(config Config, ch chan<- prometheus.Met
 	if config.DatabasesRE == nil {
 		// service discovery case
 		collect(conn)
-		conn.Close()
 		return nil
 	}
 
@@ -125,7 +125,6 @@ func (c *postgresSchemaCollector) Update(config Config, ch chan<- prometheus.Met
 	if err != nil {
 		return err
 	}
-	conn.Close()
 
 	pgconfig, err := pgx.ParseConfig(config.ConnString)
 	if err != nil {
@@ -143,8 +142,8 @@ func (c *postgresSchemaCollector) Update(config Config, ch chan<- prometheus.Met
 		if err != nil {
 			return err
 		}
+		defer conn.Close()
 		collect(conn)
-		conn.Close()
 	}
 
 	return nil

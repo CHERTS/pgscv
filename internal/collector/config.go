@@ -234,23 +234,21 @@ func discoverPgStatStatements(connStr string) (bool, string, string, error) {
 	if err != nil {
 		return false, "", "", err
 	}
+	defer conn.Close()
 
 	var setting string
 	err = conn.Conn().QueryRow(context.Background(), "SELECT setting FROM pg_settings WHERE name = 'shared_preload_libraries'").Scan(&setting)
 	if err != nil {
-		conn.Close()
 		return false, "", "", err
 	}
 
 	// If pg_stat_statements is not enabled globally, no reason to continue.
 	if !strings.Contains(setting, "pg_stat_statements") {
-		conn.Close()
 		return false, "", "", nil
 	}
 
 	// Check for pg_stat_statements in default database specified in connection string.
 	if schema := extensionInstalledSchema(conn, "pg_stat_statements"); schema != "" {
-		conn.Close()
 		return true, conn.Conn().Config().Database, schema, nil
 	}
 
@@ -261,12 +259,8 @@ func discoverPgStatStatements(connStr string) (bool, string, string, error) {
 	// Get databases list from current connection.
 	databases, err := listDatabases(conn)
 	if err != nil {
-		conn.Close()
 		return false, "", "", err
 	}
-
-	// Close connection to current database, it's not interesting anymore.
-	conn.Close()
 
 	// Establish connection to each database in the list and check where pg_stat_statements is installed.
 	for _, d := range databases {
@@ -276,15 +270,12 @@ func discoverPgStatStatements(connStr string) (bool, string, string, error) {
 			log.Warnf("connect to database '%s' failed: %s; skip", pgconfig.Database, err)
 			continue
 		}
+		defer conn.Close()
 
 		// If pg_stat_statements found, update source and return connection.
 		if schema := extensionInstalledSchema(conn, "pg_stat_statements"); schema != "" {
-			conn.Close()
 			return true, conn.Conn().Config().Database, schema, nil
 		}
-
-		// Otherwise, close connection and go to next database in the list.
-		conn.Close()
 	}
 
 	// No luck.
