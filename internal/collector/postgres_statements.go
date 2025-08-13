@@ -342,8 +342,8 @@ func (c *postgresStatementsCollector) Update(config Config, ch chan<- prometheus
 	if err != nil {
 		return err
 	}
-
 	defer conn.Close()
+
 	var res *model.PGResult
 	// get pg_stat_statements stats
 	if config.CollectTopQuery > 0 {

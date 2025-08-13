@@ -4,6 +4,7 @@ package collector
 import (
 	"database/sql"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/cherts/pgscv/internal/store"
 	"github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
-	"slices"
 )
 
 // labels is a local wrapper over prometheus.Labels which is a simple map[string]string.
@@ -239,13 +239,12 @@ func updateFromMultipleDatabases(config Config, descSets []typedDescSet, ch chan
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	realDatabases, err := listDatabases(conn)
 	if err != nil {
 		return err
 	}
-
-	conn.Close()
 
 	pgconfig, err := pgx.ParseConfig(config.ConnString)
 	if err != nil {
@@ -266,14 +265,12 @@ func updateFromMultipleDatabases(config Config, descSets []typedDescSet, ch chan
 			if err != nil {
 				return err
 			}
+			defer conn.Close()
 
 			err = updateSingleDescSet(conn, s, ch, true)
 			if err != nil {
 				log.Errorf("collect failed: %s; skip", err)
 			}
-
-			// Close connection and go next database.
-			conn.Close()
 		}
 	}
 

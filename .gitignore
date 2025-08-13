@@ -70,3 +70,5 @@ deploy/demo-lab/postgres/pg17replica1data
 deploy/demo-lab/postgres/pg17replica2data
 deploy/demo-lab/victoriametrics/data/*
 deploy/demo-lab/vmagent/data/*
+deploy/demo-lab/pgscv/*debug.yaml
+deploy/demo-lab/*.debug.*

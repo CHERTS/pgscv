@@ -254,13 +254,13 @@ func queryCurrentLogfile(conninfo string, connTimeout int) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer conn.Close()
 
 	var datadir, logfile string
 	err = conn.Conn().QueryRow(context.TODO(), "SELECT current_setting('data_directory'),pg_current_logfile()").Scan(&datadir, &logfile)
 	if err != nil {
 		return "", err
 	}
-	conn.Close()
 
 	if !strings.HasPrefix(logfile, "/") {
 		logfile = datadir + "/" + logfile
