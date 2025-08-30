@@ -2,6 +2,7 @@
 package collector
 
 import (
+	"context"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -18,6 +19,6 @@ func NewPostgresCustomCollector(constLabels labels, settings model.CollectorSett
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresCustomCollector) Update(config Config, ch chan<- prometheus.Metric) error {
-	return updateAllDescSets(config, c.custom, ch)
+func (c *postgresCustomCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
+	return updateAllDescSets(ctx, config, c.custom, ch)
 }

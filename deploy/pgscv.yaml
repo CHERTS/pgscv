@@ -12,7 +12,21 @@
 #skip_conn_error_mode: false
 #url_prefix: "example.com"
 #conn_timeout: 3
-#throttling_interval: 25
+#pooler:
+#  max_conns: 10
+#  min_conns: 2
+#  min_idle_conns: 2
+#cache:
+#  type: "memcached"
+#  server: 127.0.0.1:11211
+#  ttl: 30s
+#  collector:
+#    postgres/indexes:
+#      ttl: 10m
+#    postgres/tables:
+#      ttl: 10m
+#    postgres/statements:
+#      ttl: 5m
 #discovery:
 #  yandex_mdb:
 #    type: yandex-mdb

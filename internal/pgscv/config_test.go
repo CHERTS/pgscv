@@ -39,7 +39,6 @@ func TestMergsConfigWithEnvs(t *testing.T) {
 			want: &Config{
 				ListenAddress:     "127.0.0.1:12345",
 				NoTrackMode:       true,
-				Databases:         "exampledb-envs",
 				DisableCollectors: []string{"fisrt-disabled-collector", "second-disabled-collector", "example/1", "example/2", "example/3"},
 				ServicesConnsSettings: map[string]service.ConnSetting{
 					"EXAMPLE1": {ServiceType: "postgres", Conninfo: "postgres://pgscv1:password1@example_dsn1:5432", BaseURL: ""},
@@ -118,7 +117,6 @@ func TestNewConfigWithEnvs(t *testing.T) {
 			want: &Config{
 				ListenAddress:     "127.0.0.1:12345",
 				NoTrackMode:       false,
-				Databases:         "",
 				DisableCollectors: []string{"system", "another-disabled-collector", "example/1", "example/2", "example/3"},
 				ServicesConnsSettings: map[string]service.ConnSetting{
 					"postgres":       {ServiceType: model.ServiceTypePostgresql, Conninfo: "host=127.0.0.1 port=5432 dbname=pgscv_fixtures user=pgscv", BaseURL: ""},
@@ -339,11 +337,6 @@ func TestConfig_Validate(t *testing.T) {
 			}},
 		},
 		{
-			name:  "invalid config: invalid databases string",
-			valid: false,
-			in:    &Config{ListenAddress: "127.0.0.1:8080", Databases: "["},
-		},
-		{
 			name:  "invalid config: invalid auth",
 			valid: false,
 			in:    &Config{ListenAddress: "127.0.0.1:8080", AuthConfig: http.AuthConfig{Username: "user"}},
@@ -486,18 +479,6 @@ func Test_validateCollectorSettings(t *testing.T) {
 			},
 		},
 		{
-			valid: false, // Invalid databases regexp
-			settings: map[string]model.CollectorSettings{
-				"example/example": {
-					Subsystems: map[string]model.MetricsSubsystem{
-						"example1": {
-							Databases: "[",
-						},
-					},
-				},
-			},
-		},
-		{
 			valid: false, // No value, nor labeled_values
 			settings: map[string]model.CollectorSettings{
 				"example/example": {
@@ -574,7 +555,6 @@ func Test_newConfigFromEnv(t *testing.T) {
 			want: &Config{
 				ListenAddress:     "127.0.0.1:12345",
 				NoTrackMode:       true,
-				Databases:         "exampledb",
 				DisableCollectors: []string{"example/1", "example/2", "example/3"},
 				ServicesConnsSettings: map[string]service.ConnSetting{
 					"postgres":  {ServiceType: model.ServiceTypePostgresql, Conninfo: "example_dsn"},
@@ -623,28 +603,6 @@ func Test_newConfigFromEnv(t *testing.T) {
 
 		for k := range tc.envvars {
 			assert.NoError(t, os.Unsetenv(k))
-		}
-	}
-}
-
-func Test_newDatabasesRegexp(t *testing.T) {
-	testcases := []struct {
-		valid bool
-		str   string
-	}{
-		{valid: true, str: "example(1|2)"},
-		{valid: true, str: ""},
-		{valid: false, str: "["},
-	}
-
-	for _, tc := range testcases {
-		got, err := newDatabasesRegexp(tc.str)
-		if tc.valid {
-			assert.NoError(t, err)
-			assert.NotNil(t, got)
-		} else {
-			assert.Error(t, err)
-			assert.Nil(t, got)
 		}
 	}
 }

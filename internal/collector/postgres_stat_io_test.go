@@ -2,10 +2,10 @@ package collector
 
 import (
 	"database/sql"
+	"github.com/jackc/pgx/v5/pgconn"
 	"testing"
 
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -47,13 +47,13 @@ func Test_parsePostgresStatIO(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 17,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("backend_type")}, {Name: []byte("object")}, {Name: []byte("context")},
-					{Name: []byte("reads")}, {Name: []byte("read_time")}, {Name: []byte("writes")}, {Name: []byte("write_time")},
-					{Name: []byte("writebacks")}, {Name: []byte("writeback_time")}, {Name: []byte("extends")}, {Name: []byte("extend_time")},
-					{Name: []byte("hits")}, {Name: []byte("evictions")}, {Name: []byte("reuses")},
-					{Name: []byte("fsyncs")}, {Name: []byte("fsync_time")},
-					{Name: []byte("read_bytes")}, {Name: []byte("write_bytes")}, {Name: []byte("extend_bytes")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "backend_type"}, {Name: "object"}, {Name: "context"},
+					{Name: "reads"}, {Name: "read_time"}, {Name: "writes"}, {Name: "write_time"},
+					{Name: "writebacks"}, {Name: "writeback_time"}, {Name: "extends"}, {Name: "extend_time"},
+					{Name: "hits"}, {Name: "evictions"}, {Name: "reuses"},
+					{Name: "fsyncs"}, {Name: "fsync_time"},
+					{Name: "read_bytes"}, {Name: "write_bytes"}, {Name: "extend_bytes"},
 				},
 				Rows: [][]sql.NullString{
 					{

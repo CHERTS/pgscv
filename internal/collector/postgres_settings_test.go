@@ -2,8 +2,8 @@ package collector
 
 import (
 	"database/sql"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/cherts/pgscv/internal/model"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
@@ -33,8 +33,8 @@ func Test_parsePostgresSettings(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 4,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("name")}, {Name: []byte("setting")}, {Name: []byte("unit")}, {Name: []byte("vartype")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "name"}, {Name: "setting"}, {Name: "unit"}, {Name: "vartype"},
 				},
 				Rows: [][]sql.NullString{
 					{{String: "bgwriter_flush_after", Valid: true}, {String: "64", Valid: true}, {String: "8kB", Valid: true}, {String: "integer", Valid: true}},
@@ -73,7 +73,7 @@ func Test_parsePostgresFiles(t *testing.T) {
 			res: &model.PGResult{
 				Nrows:    4,
 				Ncols:    2,
-				Colnames: []pgproto3.FieldDescription{{Name: []byte("name")}, {Name: []byte("setting")}},
+				Colnames: []pgconn.FieldDescription{{Name: "name"}, {Name: "setting"}},
 				Rows: [][]sql.NullString{
 					{{String: "config_file", Valid: true}, {String: "testdata/datadir/postgresql.conf.golden", Valid: true}},
 					{{String: "hba_file", Valid: true}, {String: "testdata/datadir/pg_hba.conf.golden", Valid: true}},

@@ -2,10 +2,10 @@ package collector
 
 import (
 	"database/sql"
+	"github.com/jackc/pgx/v5/pgconn"
 	"testing"
 
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -53,16 +53,16 @@ func Test_parsePostgresDatabasesStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 2,
 				Ncols: 27,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("database")},
-					{Name: []byte("xact_commit")}, {Name: []byte("xact_rollback")}, {Name: []byte("blks_read")}, {Name: []byte("blks_hit")},
-					{Name: []byte("tup_returned")}, {Name: []byte("tup_fetched")}, {Name: []byte("tup_inserted")}, {Name: []byte("tup_updated")}, {Name: []byte("tup_deleted")},
-					{Name: []byte("conflicts")}, {Name: []byte("temp_files")}, {Name: []byte("temp_bytes")}, {Name: []byte("deadlocks")},
-					{Name: []byte("checksum_failures")}, {Name: []byte("last_checksum_failure_unixtime")},
-					{Name: []byte("blk_read_time")}, {Name: []byte("blk_write_time")},
-					{Name: []byte("session_time")}, {Name: []byte("active_time")}, {Name: []byte("idle_in_transaction_time")},
-					{Name: []byte("sessions")}, {Name: []byte("sessions_abandoned")}, {Name: []byte("sessions_fatal")}, {Name: []byte("sessions_killed")},
-					{Name: []byte("size_bytes")}, {Name: []byte("stats_age_seconds")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "database"},
+					{Name: "xact_commit"}, {Name: "xact_rollback"}, {Name: "blks_read"}, {Name: "blks_hit"},
+					{Name: "tup_returned"}, {Name: "tup_fetched"}, {Name: "tup_inserted"}, {Name: "tup_updated"}, {Name: "tup_deleted"},
+					{Name: "conflicts"}, {Name: "temp_files"}, {Name: "temp_bytes"}, {Name: "deadlocks"},
+					{Name: "checksum_failures"}, {Name: "last_checksum_failure_unixtime"},
+					{Name: "blk_read_time"}, {Name: "blk_write_time"},
+					{Name: "session_time"}, {Name: "active_time"}, {Name: "idle_in_transaction_time"},
+					{Name: "sessions"}, {Name: "sessions_abandoned"}, {Name: "sessions_fatal"}, {Name: "sessions_killed"},
+					{Name: "size_bytes"}, {Name: "stats_age_seconds"},
 				},
 				Rows: [][]sql.NullString{
 					{
@@ -133,7 +133,7 @@ func Test_parsePostgresXidLimitStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows:    3,
 				Ncols:    2,
-				Colnames: []pgproto3.FieldDescription{{Name: []byte("src")}, {Name: []byte("to_limit")}},
+				Colnames: []pgconn.FieldDescription{{Name: "src"}, {Name: "to_limit"}},
 				Rows: [][]sql.NullString{
 					{{String: "database", Valid: true}, {String: "2145794333", Valid: true}},
 					{{String: "prepared_xacts", Valid: true}, {String: "2147483647", Valid: true}},

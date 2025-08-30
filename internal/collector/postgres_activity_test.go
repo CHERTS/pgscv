@@ -2,8 +2,8 @@ package collector
 
 import (
 	"database/sql"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/cherts/pgscv/internal/model"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -41,15 +41,15 @@ func Test_parsePostgresActivityStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 11,
 				Ncols: 8,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("user")},
-					{Name: []byte("database")},
-					{Name: []byte("state")},
-					{Name: []byte("wait_event_type")},
-					{Name: []byte("wait_event")},
-					{Name: []byte("active_seconds")},
-					{Name: []byte("waiting_seconds")},
-					{Name: []byte("query")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "user"},
+					{Name: "database"},
+					{Name: "state"},
+					{Name: "wait_event_type"},
+					{Name: "wait_event"},
+					{Name: "active_seconds"},
+					{Name: "waiting_seconds"},
+					{Name: "query"},
 				},
 				Rows: [][]sql.NullString{
 					{
@@ -132,15 +132,15 @@ func Test_parsePostgresActivityStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 10,
 				Ncols: 6,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("user")},
-					{Name: []byte("database")},
-					{Name: []byte("state")},
-					{Name: []byte("wait_event_type")},
-					{Name: []byte("wait_event")},
-					{Name: []byte("active_seconds")},
-					{Name: []byte("waiting_seconds")},
-					{Name: []byte("query")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "user"},
+					{Name: "database"},
+					{Name: "state"},
+					{Name: "wait_event_type"},
+					{Name: "wait_event"},
+					{Name: "active_seconds"},
+					{Name: "waiting_seconds"},
+					{Name: "query"},
 				},
 				Rows: [][]sql.NullString{
 					{{String: "testuser", Valid: true}, {String: "testdb", Valid: true}, {String: "active", Valid: true}, {}, {}, {String: "1", Valid: true}, {String: "1", Valid: true}, {String: "SELECT test", Valid: true}},
@@ -187,14 +187,14 @@ func Test_parsePostgresActivityStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 6,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("user")},
-					{Name: []byte("database")},
-					{Name: []byte("state")},
-					{Name: []byte("waiting")},
-					{Name: []byte("active_seconds")},
-					{Name: []byte("waiting_seconds")},
-					{Name: []byte("query")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "user"},
+					{Name: "database"},
+					{Name: "state"},
+					{Name: "waiting"},
+					{Name: "active_seconds"},
+					{Name: "waiting_seconds"},
+					{Name: "query"},
 				},
 				Rows: [][]sql.NullString{
 					{{String: "testuser", Valid: true}, {String: "testdb", Valid: true}, {String: "active", Valid: true}, {String: "t", Valid: true}, {String: "10", Valid: true}, {String: "5", Valid: true}, {String: "SELECT test 1", Valid: true}},

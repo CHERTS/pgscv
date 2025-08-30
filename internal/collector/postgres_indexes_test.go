@@ -2,8 +2,8 @@ package collector
 
 import (
 	"database/sql"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/cherts/pgscv/internal/model"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -34,10 +34,10 @@ func Test_parsePostgresIndexStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 9,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("database")}, {Name: []byte("schema")}, {Name: []byte("table")}, {Name: []byte("index")},
-					{Name: []byte("idx_scan")}, {Name: []byte("idx_tup_read")}, {Name: []byte("idx_tup_fetch")},
-					{Name: []byte("idx_blks_read")}, {Name: []byte("idx_blks_hit")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "database"}, {Name: "schema"}, {Name: "table"}, {Name: "index"},
+					{Name: "idx_scan"}, {Name: "idx_tup_read"}, {Name: "idx_tup_fetch"},
+					{Name: "idx_blks_read"}, {Name: "idx_blks_hit"},
 				},
 				Rows: [][]sql.NullString{
 					{

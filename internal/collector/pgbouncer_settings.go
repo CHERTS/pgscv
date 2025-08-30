@@ -14,7 +14,7 @@ import (
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/cherts/pgscv/internal/store"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -62,18 +62,13 @@ func NewPgbouncerSettingsCollector(constLabels labels, settings model.CollectorS
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *pgbouncerSettingsCollector) Update(config Config, ch chan<- prometheus.Metric) error {
+func (c *pgbouncerSettingsCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
 	// Parse ConnString
 	pgbconfig, err := pgx.ParseConfig(config.ConnString)
 	if err != nil {
 		return err
 	}
-
-	conn, err := store.NewWithConfig(pgbconfig)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+	conn := config.DB
 
 	// Pgbouncers before 1.12 return version as a NOTICE message (not as normal row) and it seems
 	// there is no way to extract version string. Query the version, if zero value is returned it
@@ -89,7 +84,7 @@ func (c *pgbouncerSettingsCollector) Update(config Config, ch chan<- prometheus.
 
 	// Query pgbouncer settings.
 
-	res, err := conn.Query(settingsQuery)
+	res, err := conn.Query(ctx, settingsQuery)
 	if err != nil {
 		return err
 	}

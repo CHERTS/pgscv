@@ -2,8 +2,8 @@ package collector
 
 import (
 	"database/sql"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/cherts/pgscv/internal/model"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -33,11 +33,11 @@ func Test_parsePgbouncerPoolsStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 2,
 				Ncols: 11,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("database")}, {Name: []byte("user")},
-					{Name: []byte("cl_active")}, {Name: []byte("cl_waiting")}, {Name: []byte("sv_active")}, {Name: []byte("sv_idle")},
-					{Name: []byte("sv_used")}, {Name: []byte("sv_tested")}, {Name: []byte("sv_login")}, {Name: []byte("maxwait")},
-					{Name: []byte("pool_mode")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "database"}, {Name: "user"},
+					{Name: "cl_active"}, {Name: "cl_waiting"}, {Name: "sv_active"}, {Name: "sv_idle"},
+					{Name: "sv_used"}, {Name: "sv_tested"}, {Name: "sv_login"}, {Name: "maxwait"},
+					{Name: "pool_mode"},
 				},
 				Rows: [][]sql.NullString{
 					{
@@ -84,8 +84,8 @@ func Test_parsePgbouncerClientsStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 10,
 				Ncols: 5,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("user")}, {Name: []byte("database")}, {Name: []byte("addr")}, {Name: []byte("state")}, {Name: []byte("port")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "user"}, {Name: "database"}, {Name: "addr"}, {Name: "state"}, {Name: "port"},
 				},
 				Rows: [][]sql.NullString{
 					{{String: "user1", Valid: true}, {String: "db1", Valid: true}, {String: "1.1.1.1", Valid: true}, {String: "active", Valid: true}, {String: "11", Valid: true}},
