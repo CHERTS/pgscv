@@ -3,13 +3,10 @@ package collector
 
 import (
 	"fmt"
-	"os"
-	"strconv"
-	"strings"
 
-	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/shirou/gopsutil/v4/load"
 )
 
 type loadaverageCollector struct {
@@ -44,44 +41,14 @@ func NewLoadAverageCollector(constLabels labels, settings model.CollectorSetting
 
 // Update implements Collector and exposes load average related metrics from /proc/loadavg.
 func (c *loadaverageCollector) Update(_ Config, ch chan<- prometheus.Metric) error {
-	stats, err := getLoadAverageStats()
+	stats, err := load.Avg()
 	if err != nil {
-		return fmt.Errorf("get load average stats failed: %s", err)
+		return fmt.Errorf("failed to get load average stats: %s", err)
 	}
 
-	ch <- c.load1.newConstMetric(stats[0])
-	ch <- c.load5.newConstMetric(stats[1])
-	ch <- c.load15.newConstMetric(stats[2])
+	ch <- c.load1.newConstMetric(stats.Load1)
+	ch <- c.load5.newConstMetric(stats.Load5)
+	ch <- c.load15.newConstMetric(stats.Load15)
 
 	return nil
-}
-
-// getLoadAverageStats reads /proc/loadavg and return load stats.
-func getLoadAverageStats() ([]float64, error) {
-	data, err := os.ReadFile("/proc/loadavg")
-	if err != nil {
-		return nil, err
-	}
-
-	return parseLoadAverageStats(string(data))
-}
-
-// parseLoadAverageStats parses content from /proc/loadavg and return load stats.
-func parseLoadAverageStats(data string) ([]float64, error) {
-	log.Debug("parse load average stats")
-
-	parts := strings.Fields(data)
-	if len(parts) < 3 {
-		return nil, fmt.Errorf("invalid input, '%s': too few values", data)
-	}
-
-	var err error
-	loads := make([]float64, 3)
-	for i, load := range parts[0:3] {
-		loads[i], err = strconv.ParseFloat(load, 64)
-		if err != nil {
-			return nil, fmt.Errorf("invalid input, parse '%s' failed: %w", load, err)
-		}
-	}
-	return loads, nil
 }
