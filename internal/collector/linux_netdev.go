@@ -3,6 +3,7 @@ package collector
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -60,7 +61,7 @@ func NewNetdevCollector(constLabels labels, settings model.CollectorSettings) (C
 }
 
 // Update method collects network interfaces statistics
-func (c *netdevCollector) Update(_ Config, ch chan<- prometheus.Metric) error {
+func (c *netdevCollector) Update(_ context.Context, _ Config, ch chan<- prometheus.Metric) error {
 	stats, err := getNetdevStats()
 	if err != nil {
 		return fmt.Errorf("get /proc/net/dev stats failed: %s", err)

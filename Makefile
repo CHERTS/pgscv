@@ -43,7 +43,7 @@ clean: ## Clean
 	rm -rf ./bin
 
 go-update: ## Update go mod
-	go mod tidy -compat=1.23
+	go mod tidy -compat=1.24
 	go get -u ./cmd
 	go mod download
 	go get -u ./cmd

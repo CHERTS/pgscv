@@ -111,6 +111,10 @@ echo '"pgscv" "pgscv"' > /etc/pgbouncer/userlist.txt
 _logging "Run pgbouncer..."
 su - postgres -c "/usr/sbin/pgbouncer -d /etc/pgbouncer/pgbouncer.ini"
 
+# run memcached
+_logging "Run memcached..."
+memcached -d -u root
+
 # check services availability
 _logging "Check services availability..."
 pg_isready -t 10 -h 127.0.0.1 -p 5432 -U pgscv -d postgres

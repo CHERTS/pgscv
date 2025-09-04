@@ -2,8 +2,8 @@ package collector
 
 import (
 	"database/sql"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/cherts/pgscv/internal/model"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -35,9 +35,9 @@ func Test_parsePostgresFunctionsStat(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 3,
 				Ncols: 6,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("database")}, {Name: []byte("schema")}, {Name: []byte("function")},
-					{Name: []byte("calls")}, {Name: []byte("total_time")}, {Name: []byte("self_time")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "database"}, {Name: "schema"}, {Name: "function"},
+					{Name: "calls"}, {Name: "total_time"}, {Name: "self_time"},
 				},
 				Rows: [][]sql.NullString{
 					{

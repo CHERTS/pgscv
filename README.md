@@ -21,7 +21,6 @@ This project is a continuation of the development of the original pgSCV by [Alex
 - **OS metrics:** support collecting metrics of operating system (only Linux).
 - **Discovery and monitoring Cloud Managed Databases:** Yandex Managed Service for PostgreSQL ([see documentation](https://github.com/cherts/pgscv/wiki/Monitoring-Cloud-Managed-Databases)).
 - **Support Prometheus service discovery.** `/targets` endpoint is used to discover all monitoring services ([see documentation](https://github.com/cherts/pgscv/wiki/Service-discovery))
-- **Throttling support** The throttling allows limiting calls to the `/metrics` and `/metrics?target=xxx` endpoints to protect databases from a flood of monitoring requests from multiple collection agents ([see documentation](https://github.com/cherts/pgscv/wiki/Throttling)).
 - **Concurrency limitting support** It is possible to limit the parallel collection of monitoring data from the database to control the load created by the exporter. ([see documentatio](https://github.com/cherts/pgscv/wiki/Concurrency)).
 - **TLS and authentication**. `/metrics` and и `/metrics?target=xxx` endpoint could be protected with basic authentication and TLS.
 - **Collecting metrics from multiple services**. pgSCV can collect metrics from many databases instances.

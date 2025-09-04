@@ -2,8 +2,8 @@ package collector
 
 import (
 	"database/sql"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/cherts/pgscv/internal/model"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -51,16 +51,16 @@ func Test_parsePostgresTableStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 32,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("database")}, {Name: []byte("schema")}, {Name: []byte("table")},
-					{Name: []byte("seq_scan")}, {Name: []byte("seq_tup_read")}, {Name: []byte("idx_scan")}, {Name: []byte("idx_tup_fetch")},
-					{Name: []byte("n_tup_ins")}, {Name: []byte("n_tup_upd")}, {Name: []byte("n_tup_del")}, {Name: []byte("n_tup_hot_upd")},
-					{Name: []byte("n_live_tup")}, {Name: []byte("n_dead_tup")}, {Name: []byte("n_mod_since_analyze")},
-					{Name: []byte("last_vacuum_seconds")}, {Name: []byte("last_analyze_seconds")}, {Name: []byte("last_vacuum_time")}, {Name: []byte("last_analyze_time")},
-					{Name: []byte("vacuum_count")}, {Name: []byte("autovacuum_count")}, {Name: []byte("analyze_count")}, {Name: []byte("autoanalyze_count")},
-					{Name: []byte("heap_blks_read")}, {Name: []byte("heap_blks_hit")}, {Name: []byte("idx_blks_read")}, {Name: []byte("idx_blks_hit")},
-					{Name: []byte("toast_blks_read")}, {Name: []byte("toast_blks_hit")}, {Name: []byte("tidx_blks_read")}, {Name: []byte("tidx_blks_hit")},
-					{Name: []byte("size_bytes")}, {Name: []byte("reltuples")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "database"}, {Name: "schema"}, {Name: "table"},
+					{Name: "seq_scan"}, {Name: "seq_tup_read"}, {Name: "idx_scan"}, {Name: "idx_tup_fetch"},
+					{Name: "n_tup_ins"}, {Name: "n_tup_upd"}, {Name: "n_tup_del"}, {Name: "n_tup_hot_upd"},
+					{Name: "n_live_tup"}, {Name: "n_dead_tup"}, {Name: "n_mod_since_analyze"},
+					{Name: "last_vacuum_seconds"}, {Name: "last_analyze_seconds"}, {Name: "last_vacuum_time"}, {Name: "last_analyze_time"},
+					{Name: "vacuum_count"}, {Name: "autovacuum_count"}, {Name: "analyze_count"}, {Name: "autoanalyze_count"},
+					{Name: "heap_blks_read"}, {Name: "heap_blks_hit"}, {Name: "idx_blks_read"}, {Name: "idx_blks_hit"},
+					{Name: "toast_blks_read"}, {Name: "toast_blks_hit"}, {Name: "tidx_blks_read"}, {Name: "tidx_blks_hit"},
+					{Name: "size_bytes"}, {Name: "reltuples"},
 				},
 				Rows: [][]sql.NullString{
 					{
