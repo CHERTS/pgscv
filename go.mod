@@ -18,7 +18,7 @@ require (
 
 require (
 	github.com/golang-jwt/jwt/v4 v4.5.2
-	github.com/yandex-cloud/go-genproto v0.20.0
+	github.com/yandex-cloud/go-genproto v0.21.0
 	github.com/yandex-cloud/go-sdk v0.15.0
 )
 
