@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -26,7 +27,6 @@ type systemCollector struct {
 	numanodes  typedDesc
 	ctxt       typedDesc
 	forks      typedDesc
-	btime      typedDesc
 }
 
 // NewSysconfigCollector returns a new Collector exposing system-wide stats.
@@ -82,58 +82,58 @@ func NewSysconfigCollector(constLabels labels, settings model.CollectorSettings)
 			nil, constLabels,
 			settings.Filters,
 		),
-		btime: newBuiltinTypedDesc(
-			descOpts{"node", "", "boot_time_seconds", "Node boot time, in unixtime.", 0},
-			prometheus.GaugeValue,
-			nil, constLabels,
-			settings.Filters,
-		),
 	}, nil
 }
 
 // Update method collects filesystem usage statistics.
 func (c *systemCollector) Update(_ Config, ch chan<- prometheus.Metric) error {
-	sysctls := readSysctls(c.sysctlList)
+	if runtime.GOOS == "linux" {
+		// Read sysctl settings.
+		sysctls := readSysctls(c.sysctlList)
 
-	for name, value := range sysctls {
-		ch <- c.sysctl.newConstMetric(value, name)
-	}
-
-	// Count CPU cores by state.
-	cpuonline, cpuoffline, err := countCPUCores("/sys/devices/system/cpu/cpu*")
-	if err != nil {
-		log.Warnf("cpu count failed: %s; skip", err)
-	} else {
-		ch <- c.cpucores.newConstMetric(cpuonline, "online")
-		ch <- c.cpucores.newConstMetric(cpuoffline, "offline")
-	}
-
-	// Count CPU scaling governors.
-	governors, err := countScalingGovernors("/sys/devices/system/cpu/cpu*")
-	if err != nil {
-		log.Warnf("count CPU scaling governors failed: %s; skip", err)
-	} else {
-		for governor, total := range governors {
-			ch <- c.governors.newConstMetric(total, governor)
+		for name, value := range sysctls {
+			ch <- c.sysctl.newConstMetric(value, name)
 		}
-	}
 
-	// Count NUMA nodes.
-	nodes, err := countNumaNodes("/sys/devices/system/node/node*")
-	if err != nil {
-		log.Warnf("count NUMA nodes failed: %s; skip", err)
-	} else {
-		ch <- c.numanodes.newConstMetric(nodes)
-	}
+		// Count CPU cores by state.
+		cpuonline, cpuoffline, err := countCPUCores("/sys/devices/system/cpu/cpu*")
+		if err != nil {
+			log.Warnf("cpu count failed: %s; skip", err)
+		} else {
+			ch <- c.cpucores.newConstMetric(cpuonline, "online")
+			ch <- c.cpucores.newConstMetric(cpuoffline, "offline")
+		}
 
-	// Collect /proc/stat based metrics.
-	stat, err := getProcStat()
-	if err != nil {
-		log.Warnf("parse /proc/stat failed: %s; skip", err)
+		// Count CPU scaling governors.
+		governors, err := countScalingGovernors("/sys/devices/system/cpu/cpu*")
+		if err != nil {
+			log.Warnf("count CPU scaling governors failed: %s; skip", err)
+		} else {
+			for governor, total := range governors {
+				ch <- c.governors.newConstMetric(total, governor)
+			}
+		}
+
+		// Count NUMA nodes.
+		nodes, err := countNumaNodes("/sys/devices/system/node/node*")
+		if err != nil {
+			log.Warnf("count NUMA nodes failed: %s; skip", err)
+		} else {
+			ch <- c.numanodes.newConstMetric(nodes)
+		}
+
+		// Collect /proc/stat based metrics.
+		stat, err := getProcStat()
+		if err != nil {
+			log.Warnf("parse /proc/stat failed: %s; skip", err)
+		} else {
+			ch <- c.ctxt.newConstMetric(stat.ctxt)
+			ch <- c.forks.newConstMetric(stat.forks)
+		}
 	} else {
-		ch <- c.ctxt.newConstMetric(stat.ctxt)
-		ch <- c.btime.newConstMetric(stat.btime)
-		ch <- c.forks.newConstMetric(stat.forks)
+		ch <- c.numanodes.newConstMetric(-1)
+		ch <- c.ctxt.newConstMetric(-1)
+		ch <- c.forks.newConstMetric(-1)
 	}
 
 	return nil

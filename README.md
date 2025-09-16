@@ -18,7 +18,7 @@ This project is a continuation of the development of the original pgSCV by [Alex
 
 ### Features
 - **Supported services:** support collecting metrics of PostgreSQL, Pgbouncer and Patroni.
-- **OS metrics:** support collecting metrics of operating system (only Linux).
+- **OS metrics:** support collecting metrics of operating system (Linux, Windows, MacOS, FreeBSD).
 - **Discovery and monitoring Cloud Managed Databases:** Yandex Managed Service for PostgreSQL ([see documentation](https://github.com/cherts/pgscv/wiki/Monitoring-Cloud-Managed-Databases)).
 - **Support Prometheus service discovery.** `/targets` endpoint is used to discover all monitoring services ([see documentation](https://github.com/cherts/pgscv/wiki/Service-discovery))
 - **Throttling support** The throttling allows limiting calls to the `/metrics` and `/metrics?target=xxx` endpoints to protect databases from a flood of monitoring requests from multiple collection agents ([see documentation](https://github.com/cherts/pgscv/wiki/Throttling)).
@@ -31,7 +31,8 @@ This project is a continuation of the development of the original pgSCV by [Alex
   block devices, network interfaces, filesystems, users, databases, etc.
 
 ### Requirements
-- Can run on Linux only; can connect to remote services running on other OS/PaaS.
+- Can run on Linux, Windows, MacOS, FreeBSD only.
+- Can connect to remote services running on other OS/PaaS.
 - Requisites for connecting to the services, such as login and password.
 - Database user should have privileges for executing stats functions and reading views.
   For more details see [security considerations](https://github.com/cherts/pgscv/wiki/Security-considerations).
@@ -40,7 +41,7 @@ This project is a continuation of the development of the original pgSCV by [Alex
 Download the archive from [releases](https://github.com/cherts/pgscv/releases). Unpack the archive. Create minimum config file. Start pgSCV systemd service under `postgres` user.
 
 ```bash
-curl -s -L https://github.com/cherts/pgscv/releases/download/v0.15.0/pgscv_0.15.0_linux_$(uname -m).tar.gz -o - | tar xzf - -C /tmp && \
+curl -s -L https://github.com/cherts/pgscv/releases/download/v1.0.0/pgscv_1.0.0_$(uname -s | tr A-Z a-z)_$(uname -m).tar.gz -o - | tar xzf - -C /tmp && \
 mv /tmp/pgscv.yaml /etc && \
 mv /tmp/pgscv.service /etc/systemd/system &&  \
 mv /tmp/pgscv.default /etc/default/pgscv && \
