@@ -2,9 +2,9 @@ package collector
 
 import (
 	"database/sql"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/cherts/pgscv/internal/store"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -44,8 +44,8 @@ func Test_parsePgbouncerSettings(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 2,
 				Ncols: 3,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("key")}, {Name: []byte("value")}, {Name: []byte("changeable")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "key"}, {Name: "value"}, {Name: "changeable"},
 				},
 				Rows: [][]sql.NullString{
 					{{String: "listen_addr", Valid: true}, {String: "127.0.0.1", Valid: true}, {String: "no", Valid: true}},

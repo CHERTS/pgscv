@@ -1,10 +1,11 @@
 package collector
 
 import (
+	"context"
 	"database/sql"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/cherts/pgscv/internal/store"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
@@ -41,8 +42,8 @@ func Test_parsePostgresTempFileInflght(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 4,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("tablespace")}, {Name: []byte("files_total")}, {Name: []byte("bytes_total")}, {Name: []byte("max_age_seconds")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "tablespace"}, {Name: "files_total"}, {Name: "bytes_total"}, {Name: "max_age_seconds"},
 				},
 				Rows: [][]sql.NullString{
 					{
@@ -85,7 +86,7 @@ func Test_getTablespacesStat(t *testing.T) {
 
 	conn := store.NewTest(t)
 
-	ts, err := getTablespacesStat(conn, mounts)
+	ts, err := getTablespacesStat(context.Background(), Config{DB: conn}, nil, mounts)
 	assert.NoError(t, err)
 	assert.NotEqual(t, 0, ts)
 
@@ -102,7 +103,7 @@ func Test_getWaldirStat(t *testing.T) {
 
 	conn := store.NewTest(t)
 
-	s1, s2, s3, i1, i2, err := getWaldirStat(conn, mounts)
+	s1, s2, s3, i1, i2, err := getWaldirStat(context.Background(), Config{DB: conn}, nil, mounts)
 	assert.NoError(t, err)
 	assert.NotEqual(t, "", s1)
 	assert.NotEqual(t, "", s2)
@@ -118,8 +119,7 @@ func Test_getLogdirStat(t *testing.T) {
 	assert.NoError(t, err)
 
 	conn := store.NewTest(t)
-
-	s1, s2, s3, i1, i2, err := getLogdirStat(conn, true, "/tmp", mounts)
+	s1, s2, s3, i1, i2, err := getLogdirStat(context.Background(), Config{DB: conn}, nil, true, "/tmp", mounts)
 	assert.NoError(t, err)
 	assert.NotEqual(t, "", s1)
 	assert.NotEqual(t, "", s2)
@@ -133,7 +133,7 @@ func Test_getLogdirStat(t *testing.T) {
 func Test_getTempfilesStat(t *testing.T) {
 	conn := store.NewTest(t)
 
-	_, _, err := getTempfilesStat(conn, 120000)
+	_, _, err := getTempfilesStat(context.Background(), Config{DB: conn}, 120000, nil)
 	assert.NoError(t, err)
 
 	conn.Close()

@@ -1,4 +1,4 @@
-package yandex
+package filter
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ func stringPtr(s string) *string {
 }
 
 func TestMatchName(t *testing.T) {
-	filter := NewFilter(".*test.*", nil, stringPtr("exclude"), nil)
+	filter := New(".*test.*", nil, stringPtr("exclude"), nil)
 
 	testCases := []struct {
 		name    string
@@ -31,7 +31,7 @@ func TestMatchName(t *testing.T) {
 }
 
 func TestMatchDb(t *testing.T) {
-	filter := NewFilter(".*", stringPtr(".*db.*"), nil, stringPtr("exclude"))
+	filter := New(".*", stringPtr(".*db.*"), nil, stringPtr("exclude"))
 
 	testCases := []struct {
 		name    string
@@ -53,7 +53,7 @@ func TestMatchDb(t *testing.T) {
 
 func TestNewFilter(t *testing.T) {
 	//Test for nil values
-	filter := NewFilter(".*", nil, nil, nil)
+	filter := New(".*", nil, nil, nil)
 	if filter.dbRegexp != nil {
 		t.Errorf("dbRegexp should be nil")
 	}

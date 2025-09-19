@@ -2,11 +2,10 @@ package collector
 
 import (
 	"database/sql"
-	"testing"
-
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/jackc/pgproto3/v2"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestPostgresReplicationCollector_Update(t *testing.T) {
@@ -36,11 +35,11 @@ func Test_parsePostgresReplicationStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 14,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("pid")}, {Name: []byte("client_addr")}, {Name: []byte("client_port")}, {Name: []byte("user")}, {Name: []byte("application_name")}, {Name: []byte("state")},
-					{Name: []byte("pending_lag_bytes")}, {Name: []byte("write_lag_bytes")}, {Name: []byte("flush_lag_bytes")},
-					{Name: []byte("replay_lag_bytes")}, {Name: []byte("total_lag_bytes")}, {Name: []byte("write_lag_seconds")},
-					{Name: []byte("flush_lag_seconds")}, {Name: []byte("replay_lag_seconds")}, {Name: []byte("total_lag_seconds")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "pid"}, {Name: "client_addr"}, {Name: "client_port"}, {Name: "user"}, {Name: "application_name"}, {Name: "state"},
+					{Name: "pending_lag_bytes"}, {Name: "write_lag_bytes"}, {Name: "flush_lag_bytes"},
+					{Name: "replay_lag_bytes"}, {Name: "total_lag_bytes"}, {Name: "write_lag_seconds"},
+					{Name: "flush_lag_seconds"}, {Name: "replay_lag_seconds"}, {Name: "total_lag_seconds"},
 				},
 				Rows: [][]sql.NullString{
 					{

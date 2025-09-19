@@ -46,24 +46,18 @@ type YandexConfig struct {
 type engineIdx int
 type version uint64
 
-type subscriber struct {
-	AddService     discovery.AddServiceFunc
-	RemoveService  discovery.RemoveServiceFunc
-	SyncedVersion  map[engineIdx]version
-	syncedServices map[string]discovery.Service
-}
-
 // YandexDiscovery is main struct for Yandex Managed Databases discoverer
 type YandexDiscovery struct {
 	sync.RWMutex
+	id          string
 	config      []YandexConfig
 	engines     []*yandexEngine
 	subscribers map[string]subscriber
 }
 
 // NewYandexDiscovery return pointer initialized YandexDiscovery structure
-func NewYandexDiscovery() *YandexDiscovery {
-	return &YandexDiscovery{subscribers: make(map[string]subscriber)}
+func NewYandexDiscovery(id string) *YandexDiscovery {
+	return &YandexDiscovery{id: id, subscribers: make(map[string]subscriber)}
 }
 
 // Unsubscribe implementation Unsubscribe method of Discovery interface

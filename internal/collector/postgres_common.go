@@ -2,13 +2,11 @@
 package collector
 
 import (
-	"context"
 	"strconv"
 	"strings"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 )
 
 // Postgres server versions
@@ -147,29 +145,4 @@ func parsePostgresCustomStats(r *model.PGResult, labelNames []string) postgresCu
 	}
 
 	return stats
-}
-
-// listDatabases returns slice with databases names
-func listDatabases(db *store.DB) ([]string, error) {
-	// getDBList returns the list of databases that allowed for connection
-	rows, err := db.Conn().Query(context.Background(),
-		`SELECT datname FROM pg_database
-			 WHERE NOT datistemplate AND datallowconn
-			  AND has_database_privilege(datname, 'CONNECT')
-			  AND NOT (version() LIKE '%yandex%' AND datname = 'postgres');`,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var list = make([]string, 0, 10)
-	for rows.Next() {
-		var dbname string
-		if err := rows.Scan(&dbname); err != nil {
-			return nil, err
-		}
-		list = append(list, dbname)
-	}
-	return list, nil
 }

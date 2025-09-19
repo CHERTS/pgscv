@@ -2,10 +2,10 @@ package collector
 
 import (
 	"database/sql"
+	"github.com/jackc/pgx/v5/pgconn"
 	"testing"
 
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,11 +39,11 @@ func Test_parsePostgresSubscriptionStat(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 10,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("subid")}, {Name: []byte("subname")}, {Name: []byte("pid")},
-					{Name: []byte("worker_type")}, {Name: []byte("received_lsn")}, {Name: []byte("reported_lsn")},
-					{Name: []byte("msg_send_time")}, {Name: []byte("msg_recv_time")}, {Name: []byte("reported_time")},
-					{Name: []byte("apply_error_count")}, {Name: []byte("sync_error_count")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "subid"}, {Name: "subname"}, {Name: "pid"},
+					{Name: "worker_type"}, {Name: "received_lsn"}, {Name: "reported_lsn"},
+					{Name: "msg_send_time"}, {Name: "msg_recv_time"}, {Name: "reported_time"},
+					{Name: "apply_error_count"}, {Name: "sync_error_count"},
 				},
 				Rows: [][]sql.NullString{
 					{

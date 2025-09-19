@@ -1,4 +1,5 @@
-package yandex
+// Package filter implements regexp matching cluster and database name
+package filter
 
 import "regexp"
 
@@ -10,8 +11,8 @@ type Filter struct {
 	excludeDbRegexp   *regexp.Regexp
 }
 
-// NewFilter return Filter structure with compiled regexps
-func NewFilter(name string, db, excludeName, excludeDb *string) *Filter {
+// New return Filter structure with compiled regexps
+func New(name string, db, excludeName, excludeDb *string) *Filter {
 	f := &Filter{}
 	f.nameRegexp = regexp.MustCompile(name)
 	if db != nil {

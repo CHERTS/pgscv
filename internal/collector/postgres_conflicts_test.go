@@ -2,8 +2,8 @@ package collector
 
 import (
 	"database/sql"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/cherts/pgscv/internal/model"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -31,9 +31,9 @@ func Test_parsePostgresConflictsStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 2,
 				Ncols: 6,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("database")}, {Name: []byte("confl_tablespace")}, {Name: []byte("confl_lock")},
-					{Name: []byte("confl_snapshot")}, {Name: []byte("confl_bufferpin")}, {Name: []byte("confl_deadlock")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "database"}, {Name: "confl_tablespace"}, {Name: "confl_lock"},
+					{Name: "confl_snapshot"}, {Name: "confl_bufferpin"}, {Name: "confl_deadlock"},
 				},
 				Rows: [][]sql.NullString{
 					{

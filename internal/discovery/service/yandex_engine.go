@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/cherts/pgscv/internal/discovery/filter"
 	"maps"
 	"strings"
 	"sync"
@@ -11,11 +12,6 @@ import (
 	"github.com/cherts/pgscv/discovery/log"
 	"github.com/cherts/pgscv/internal/discovery/cloud/yandex"
 )
-
-type clusterDSN struct {
-	dsn, name string
-	labels    []Label
-}
 
 type hostDb string
 
@@ -32,17 +28,17 @@ func (ye *yandexEngine) Start(ctx context.Context) error {
 		ye.RLock()
 		interval := time.Duration(ye.config.RefreshInterval) * time.Minute
 		folderID := ye.config.FolderID
-		filter := make([]yandex.Filter, 0, len(ye.config.Clusters))
+		f := make([]filter.Filter, 0, len(ye.config.Clusters))
 		password := ye.config.Password
 		username := ye.config.User
 		for _, c := range ye.config.Clusters {
-			filter = append(filter, *yandex.NewFilter(c.Name, c.Db, c.ExcludeName, c.ExcludeDb))
+			f = append(f, *filter.New(c.Name, c.Db, c.ExcludeName, c.ExcludeDb))
 		}
 		ye.RUnlock()
 		ctx, cancel := context.WithCancel(ctx)
 		for {
 
-			clusters, err := ye.sdk.GetPostgreSQLClusters(ctx, folderID, filter)
+			clusters, err := ye.sdk.GetPostgreSQLClusters(ctx, folderID, f)
 			if err != nil {
 				log.Errorf("[Yandex.Cloud SD] Failed to get cluster list, error: %v", err)
 				select {

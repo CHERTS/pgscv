@@ -2,10 +2,10 @@ package collector
 
 import (
 	"database/sql"
+	"github.com/jackc/pgx/v5/pgconn"
 	"testing"
 
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,8 +32,8 @@ func Test_parsePostgresStatSsl(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 3,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("database")}, {Name: []byte("username")}, {Name: []byte("ssl_conn_number")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "database"}, {Name: "username"}, {Name: "ssl_conn_number"},
 				},
 				Rows: [][]sql.NullString{
 					{

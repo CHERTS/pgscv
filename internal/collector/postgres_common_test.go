@@ -2,9 +2,8 @@ package collector
 
 import (
 	"database/sql"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -20,9 +19,9 @@ func Test_parsePostgresGenericStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 2,
 				Ncols: 6,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("label1")}, {Name: []byte("label2")},
-					{Name: []byte("value1")}, {Name: []byte("value2")}, {Name: []byte("value3")}, {Name: []byte("value4")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "label1"}, {Name: "label2"},
+					{Name: "value1"}, {Name: "value2"}, {Name: "value3"}, {Name: "value4"},
 				},
 				Rows: [][]sql.NullString{
 					{
@@ -67,9 +66,9 @@ func Test_parsePostgresCustomStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 3,
 				Ncols: 6,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("label1")}, {Name: []byte("label2")},
-					{Name: []byte("value1")}, {Name: []byte("value2")}, {Name: []byte("value3")}, {Name: []byte("value4")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "label1"}, {Name: "label2"},
+					{Name: "value1"}, {Name: "value2"}, {Name: "value3"}, {Name: "value4"},
 				},
 				Rows: [][]sql.NullString{
 					{
@@ -100,13 +99,4 @@ func Test_parsePostgresCustomStats(t *testing.T) {
 			assert.EqualValues(t, tc.want, got)
 		})
 	}
-}
-
-func Test_listDatabases(t *testing.T) {
-	conn := store.NewTest(t)
-
-	databases, err := listDatabases(conn)
-	assert.NoError(t, err)
-	assert.Greater(t, len(databases), 0)
-	conn.Close()
 }

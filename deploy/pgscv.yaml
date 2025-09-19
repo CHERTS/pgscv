@@ -12,7 +12,21 @@
 #skip_conn_error_mode: false
 #url_prefix: "example.com"
 #conn_timeout: 3
-#throttling_interval: 25
+#pooler:
+#  max_conns: 10
+#  min_conns: 2
+#  min_idle_conns: 2
+#cache:
+#  type: "memcached"
+#  server: 127.0.0.1:11211
+#  ttl: 30s
+#  collector:
+#    postgres/indexes:
+#      ttl: 10m
+#    postgres/tables:
+#      ttl: 10m
+#    postgres/statements:
+#      ttl: 5m
 #discovery:
 #  yandex_mdb:
 #    type: yandex-mdb
@@ -35,6 +49,20 @@
 #            db:
 #            exclude_name:
 #            exclude_db:
+#  cluster1:
+#    type: postgres
+#    config:
+#      conninfo: "postgres://postgres:postgres@127.0.0.1:7432/postgres"
+#      #password_from_env: PGPASSWORD
+#      #db: ".*"
+#      #exclude_db: "postgres"
+#      # target_labels:
+#      #  - name: folder_id
+#      #    value: "b1000000000000"
+#      #  - name: __scrape_timeout__
+#      #    value: 1m
+#      #  - name: __scrape_interval__
+#      #    value: 2m
 services:
   "postgres:5432":
     service_type: "postgres"
@@ -56,7 +84,6 @@ services:
 #  "patroni3":
 #    service_type: "patroni"
 #    baseurl: "http://127.0.0.1:8010"
-#databases: "^([a-zA-Z0-9])+_(prod|PROD)$"
 #disable_collectors:
 #  - system
 #  - system/pgscv

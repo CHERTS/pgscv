@@ -2,8 +2,8 @@ package collector
 
 import (
 	"database/sql"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/cherts/pgscv/internal/model"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -32,8 +32,8 @@ func Test_parsePostgresReplicationSlotStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 15,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("slot_name")}, {Name: []byte("slot_type")}, {Name: []byte("database")}, {Name: []byte("active")}, {Name: []byte("since_restart_bytes")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "slot_name"}, {Name: "slot_type"}, {Name: "database"}, {Name: "active"}, {Name: "since_restart_bytes"},
 				},
 				Rows: [][]sql.NullString{
 					{

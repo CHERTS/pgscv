@@ -12,7 +12,6 @@ concurrency_limit: 5
 skip_conn_error_mode: true
 url_prefix: http://pgscv:9890
 #conn_timeout: 3
-throttling_interval: 25
 services:
   "postgres9":
     service_type: "postgres"

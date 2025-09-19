@@ -2,10 +2,10 @@ package collector
 
 import (
 	"database/sql"
+	"github.com/jackc/pgx/v5/pgconn"
 	"testing"
 
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,9 +38,9 @@ func Test_parsePostgresStatSlru(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 8,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("name")}, {Name: []byte("blks_zeroed")}, {Name: []byte("blks_hit")}, {Name: []byte("blks_read")},
-					{Name: []byte("blks_written")}, {Name: []byte("blks_exists")}, {Name: []byte("flushes")}, {Name: []byte("truncates")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "name"}, {Name: "blks_zeroed"}, {Name: "blks_hit"}, {Name: "blks_read"},
+					{Name: "blks_written"}, {Name: "blks_exists"}, {Name: "flushes"}, {Name: "truncates"},
 				},
 				Rows: [][]sql.NullString{
 					{

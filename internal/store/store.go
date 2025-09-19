@@ -5,11 +5,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"time"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 )
 
 const (
@@ -32,69 +34,82 @@ const (
 
 // DB is the database representation
 type DB struct {
-	conn *pgx.Conn // database connection object
+	conn *pgxpool.Pool // database connection object
 }
 
 // New creates new connection to Postgres/Pgbouncer using passed DSN
 func New(connString string, connTimeout int) (*DB, error) {
-	config, err := pgx.ParseConfig(connString)
+	config, err := pgxpool.ParseConfig(connString)
+
 	if err != nil {
 		return nil, err
 	}
 	if connTimeout > 0 {
-		config.ConnectTimeout = time.Duration(connTimeout) * time.Second
+		config.ConnConfig.ConnectTimeout = time.Duration(connTimeout) * time.Second
 	}
 
 	return NewWithConfig(config)
 }
 
-// NewWithConfig creates new connection to Postgres/Pgbouncer using passed Config.
-func NewWithConfig(config *pgx.ConnConfig) (*DB, error) {
+// NewWithConfig creates new pool connections to Postgres/Pgbouncer using passed Config.
+func NewWithConfig(config *pgxpool.Config) (*DB, error) {
 	// Enable simple protocol for compatibility with Pgbouncer.
-	config.PreferSimpleProtocol = true
+	config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 
 	// Using simple protocol requires explicit options to be set.
-	config.RuntimeParams = map[string]string{
+	config.ConnConfig.RuntimeParams = map[string]string{
 		"standard_conforming_strings": "on",
 		"client_encoding":             "UTF8",
 	}
 
-	conn, err := pgx.ConnectConfig(context.Background(), config)
+	pool, err := pgxpool.NewWithConfig(context.TODO(), config)
+
 	if err != nil {
 		return nil, err
 	}
 
-	return &DB{conn: conn}, nil
+	return &DB{conn: pool}, nil
 }
 
 /* public db methods */
 
 // Query is a wrapper on private query() method.
-func (db *DB) Query(query string, args ...any) (*model.PGResult, error) {
-	return db.query(query, args...)
+func (db *DB) Query(ctx context.Context, query string, args ...any) (*model.PGResult, error) {
+	if db == nil {
+		// @todo: debug
+		return nil, fmt.Errorf("db is nil")
+	}
+	return db.query(ctx, query, args...)
 }
 
 // Close is wrapper on private close() method.
 func (db *DB) Close() { db.close() }
 
-// Conn provides access to public methods of *pgx.Conn struct
-func (db *DB) Conn() *pgx.Conn { return db.conn }
+// Conn provides access to public methods of *pgxpool.Pool struct
+func (db *DB) Conn() *pgxpool.Pool { return db.conn }
 
 /* private db methods */
 
 // Query method executes passed query and wraps result into model.PGResult struct.
-func (db *DB) query(query string, args ...any) (*model.PGResult, error) {
-	rows, err := db.Conn().Query(context.Background(), query, args...)
+func (db *DB) query(ctx context.Context, query string, args ...any) (*model.PGResult, error) {
+
+	if db.conn == nil {
+		return nil, fmt.Errorf("db conn is nil")
+	}
+	rows, err := db.conn.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
-	// Generic variables describe properties of query result.
+	descriptions := rows.FieldDescriptions()
+
 	var (
-		colnames = rows.FieldDescriptions()
-		ncols    = len(colnames)
-		nrows    int
+		ncols = len(descriptions)
+		nrows int
 	)
+	colnames := make([]pgconn.FieldDescription, ncols)
+	copy(colnames, descriptions)
 
 	// Not the all data types could be safely converted into sql.NullString
 	// and conversion errors lead to panic.
@@ -111,7 +126,7 @@ func (db *DB) query(query string, args ...any) (*model.PGResult, error) {
 	// also writing to the 'values' under the hood. When all pointers/values have been scanned, put them into 'rowsStore'.
 	// Finally we get queryResult iterable store with data and information about stored rows, columns and columns names.
 	var rowsStore = make([][]sql.NullString, 0, 10)
-
+	// TODO: refactor to pgx.CollectRows(rows)
 	for rows.Next() {
 		pointers := make([]any, ncols)
 		values := make([]sql.NullString, ncols)
@@ -129,8 +144,6 @@ func (db *DB) query(query string, args ...any) (*model.PGResult, error) {
 		nrows++
 	}
 
-	rows.Close()
-
 	return &model.PGResult{
 		Nrows:    nrows,
 		Ncols:    ncols,
@@ -141,10 +154,7 @@ func (db *DB) query(query string, args ...any) (*model.PGResult, error) {
 
 // Close method closes database connections gracefully.
 func (db *DB) close() {
-	err := db.Conn().Close(context.Background())
-	if err != nil {
-		log.Warnf("failed to close database connection: %s; ignore", err)
-	}
+	db.Conn().Close()
 }
 
 // isDataTypeSupported tests passed type OID is supported.
@@ -158,4 +168,29 @@ func isDataTypeSupported(t uint32) bool {
 	default:
 		return false
 	}
+}
+
+// Databases returns slice with databases names
+func Databases(ctx context.Context, db *DB) ([]string, error) {
+	// getDBList returns the list of databases that allowed for connection
+	rows, err := db.Conn().Query(ctx,
+		`SELECT datname FROM pg_database
+			 WHERE NOT datistemplate AND datallowconn
+			  AND has_database_privilege(datname, 'CONNECT')
+			  AND NOT (version() LIKE '%yandex%' AND datname = 'postgres');`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list = make([]string, 0, 10)
+	for rows.Next() {
+		var dbname string
+		if err := rows.Scan(&dbname); err != nil {
+			return nil, err
+		}
+		list = append(list, dbname)
+	}
+	return list, nil
 }
