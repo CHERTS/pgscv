@@ -160,14 +160,23 @@ type PgscvCollector struct {
 // NewPgscvCollector accepts Factories and creates per-service instance of Collector.
 func NewPgscvCollector(serviceID string, factories Factories, config Config) (*PgscvCollector, error) {
 	collectors := make(map[string]Collector)
-	pgConfig, err := pgx.ParseConfig(config.ConnString)
-	if err != nil {
-		return nil, err
+
+	constLabels := make(labels)
+	constLabels["service_id"] = serviceID
+
+	if config.ServiceType == model.ServiceTypePostgresql || config.ServiceType == model.ServiceTypePgbouncer {
+		pgConfig, err := pgx.ParseConfig(config.ConnString)
+		if err != nil {
+			return nil, err
+		}
+		constLabels["host"] = pgConfig.Host
+		constLabels["port"] = strconv.FormatUint(uint64(pgConfig.Port), 10)
 	}
-	constLabels := labels{"service_id": serviceID, "host": pgConfig.Host, "port": strconv.FormatUint(uint64(pgConfig.Port), 10)}
+
 	if config.ConstLabels != nil {
 		maps.Copy(constLabels, *config.ConstLabels)
 	}
+
 	for key := range factories {
 		settings := config.Settings[key]
 

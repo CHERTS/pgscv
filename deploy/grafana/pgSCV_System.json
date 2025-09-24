@@ -411,7 +411,7 @@
             "uid": "${DS_VICTORIAMETRICS-PGSCV}"
           },
           "exemplar": false,
-          "expr": "node_memory_MemFree{instance=\"$instance\"} + node_memory_Cached{instance=\"$instance\"} + node_memory_Buffers{instance=\"$instance\"}",
+          "expr": "node_memory_available{instance=\"$instance\"}",
           "instant": false,
           "interval": "",
           "legendFormat": "",
@@ -750,7 +750,7 @@
                 "uid": "${DS_VICTORIAMETRICS-PGSCV}"
               },
               "editorMode": "code",
-              "expr": "sum by (device) (rate(node_disk_io_time_seconds_total{instance=\"$instance\"}[1m])) / on() group_left() rate(node_uptime_up_seconds_total{instance=\"$instance\"}[1m]) * 100",
+              "expr": "sum by (device) (rate(node_disk_io_time_seconds_total{instance=\"$instance\"}[1m])) / on() group_left() rate(node_uptime_seconds{instance=\"$instance\"}[1m]) * 100",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -917,7 +917,7 @@
                 "uid": "${DS_VICTORIAMETRICS-PGSCV}"
               },
               "exemplar": true,
-              "expr": "avg_over_time(node_memory_MemFree{instance=\"$instance\"}[1m])",
+              "expr": "avg_over_time(node_memory_free{instance=\"$instance\"}[1m])",
               "interval": "",
               "legendFormat": "free",
               "refId": "A"
@@ -928,7 +928,7 @@
                 "uid": "${ds}"
               },
               "exemplar": true,
-              "expr": "avg_over_time(node_memory_Buffers{instance=\"$instance\"}[1m])",
+              "expr": "avg_over_time(node_memory_buffers{instance=\"$instance\"}[1m])",
               "hide": false,
               "interval": "",
               "legendFormat": "buffers",
@@ -940,7 +940,7 @@
                 "uid": "${DS_VICTORIAMETRICS-PGSCV}"
               },
               "exemplar": true,
-              "expr": "avg_over_time(node_memory_Cached{instance=\"$instance\"}[1m])",
+              "expr": "avg_over_time(node_memory_cached{instance=\"$instance\"}[1m])",
               "hide": false,
               "interval": "",
               "legendFormat": "cached",
@@ -953,7 +953,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "avg_over_time(node_memory_MemUsed{instance=\"$instance\"}[1m])",
+              "expr": "avg_over_time(node_memory_used{instance=\"$instance\"}[1m])",
               "hide": false,
               "interval": "",
               "legendFormat": "used",

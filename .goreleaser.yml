@@ -14,10 +14,12 @@ builds:
       - arm
     goos:
       - linux
-    #  - windows
-    #  - freebsd
-    #  - darwin
-    #ignore:
+      - windows
+      - freebsd
+      - darwin
+    ignore:
+      - goarch: '386'
+        goos: windows
     #  - goarch: arm
     #    goos: windows
     #  - goarch: arm64
