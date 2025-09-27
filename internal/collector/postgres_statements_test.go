@@ -3,10 +3,10 @@ package collector
 import (
 	"database/sql"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgconn"
 	"testing"
 
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -52,13 +52,13 @@ func Test_parsePostgresStatementsStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 19,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("database")}, {Name: []byte("user")}, {Name: []byte("queryid")}, {Name: []byte("query")},
-					{Name: []byte("calls")}, {Name: []byte("rows")},
-					{Name: []byte("total_time")}, {Name: []byte("blk_read_time")}, {Name: []byte("blk_write_time")},
-					{Name: []byte("shared_blks_hit")}, {Name: []byte("shared_blks_read")}, {Name: []byte("shared_blks_dirtied")}, {Name: []byte("shared_blks_written")},
-					{Name: []byte("local_blks_hit")}, {Name: []byte("local_blks_read")}, {Name: []byte("local_blks_dirtied")}, {Name: []byte("local_blks_written")},
-					{Name: []byte("temp_blks_read")}, {Name: []byte("temp_blks_written")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "database"}, {Name: "user"}, {Name: "queryid"}, {Name: "query"},
+					{Name: "calls"}, {Name: "rows"},
+					{Name: "total_time"}, {Name: "blk_read_time"}, {Name: "blk_write_time"},
+					{Name: "shared_blks_hit"}, {Name: "shared_blks_read"}, {Name: "shared_blks_dirtied"}, {Name: "shared_blks_written"},
+					{Name: "local_blks_hit"}, {Name: "local_blks_read"}, {Name: "local_blks_dirtied"}, {Name: "local_blks_written"},
+					{Name: "temp_blks_read"}, {Name: "temp_blks_written"},
 				},
 				Rows: [][]sql.NullString{
 					{
@@ -87,14 +87,14 @@ func Test_parsePostgresStatementsStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 23,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("database")}, {Name: []byte("user")}, {Name: []byte("queryid")}, {Name: []byte("query")},
-					{Name: []byte("calls")}, {Name: []byte("rows")},
-					{Name: []byte("total_exec_time")}, {Name: []byte("total_plan_time")}, {Name: []byte("blk_read_time")}, {Name: []byte("blk_write_time")},
-					{Name: []byte("shared_blks_hit")}, {Name: []byte("shared_blks_read")}, {Name: []byte("shared_blks_dirtied")}, {Name: []byte("shared_blks_written")},
-					{Name: []byte("local_blks_hit")}, {Name: []byte("local_blks_read")}, {Name: []byte("local_blks_dirtied")}, {Name: []byte("local_blks_written")},
-					{Name: []byte("temp_blks_read")}, {Name: []byte("temp_blks_written")}, {Name: []byte("wal_records")}, {Name: []byte("wal_fpi")},
-					{Name: []byte("wal_bytes")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "database"}, {Name: "user"}, {Name: "queryid"}, {Name: "query"},
+					{Name: "calls"}, {Name: "rows"},
+					{Name: "total_exec_time"}, {Name: "total_plan_time"}, {Name: "blk_read_time"}, {Name: "blk_write_time"},
+					{Name: "shared_blks_hit"}, {Name: "shared_blks_read"}, {Name: "shared_blks_dirtied"}, {Name: "shared_blks_written"},
+					{Name: "local_blks_hit"}, {Name: "local_blks_read"}, {Name: "local_blks_dirtied"}, {Name: "local_blks_written"},
+					{Name: "temp_blks_read"}, {Name: "temp_blks_written"}, {Name: "wal_records"}, {Name: "wal_fpi"},
+					{Name: "wal_bytes"},
 				},
 				Rows: [][]sql.NullString{
 					{
@@ -124,13 +124,13 @@ func Test_parsePostgresStatementsStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 21,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("database")}, {Name: []byte("user")}, {Name: []byte("queryid")}, {Name: []byte("query")},
-					{Name: []byte("calls")}, {Name: []byte("rows")},
-					{Name: []byte("total_exec_time")}, {Name: []byte("total_plan_time")}, {Name: []byte("blk_read_time")}, {Name: []byte("blk_write_time")}, {Name: []byte("min_time")},
-					{Name: []byte("shared_blks_hit")}, {Name: []byte("shared_blks_read")}, {Name: []byte("shared_blks_dirtied")}, {Name: []byte("shared_blks_written")},
-					{Name: []byte("local_blks_hit")}, {Name: []byte("local_blks_read")}, {Name: []byte("local_blks_dirtied")}, {Name: []byte("local_blks_written")},
-					{Name: []byte("temp_blks_read")}, {Name: []byte("temp_blks_written")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "database"}, {Name: "user"}, {Name: "queryid"}, {Name: "query"},
+					{Name: "calls"}, {Name: "rows"},
+					{Name: "total_exec_time"}, {Name: "total_plan_time"}, {Name: "blk_read_time"}, {Name: "blk_write_time"}, {Name: "min_time"},
+					{Name: "shared_blks_hit"}, {Name: "shared_blks_read"}, {Name: "shared_blks_dirtied"}, {Name: "shared_blks_written"},
+					{Name: "local_blks_hit"}, {Name: "local_blks_read"}, {Name: "local_blks_dirtied"}, {Name: "local_blks_written"},
+					{Name: "temp_blks_read"}, {Name: "temp_blks_written"},
 				},
 				Rows: [][]sql.NullString{
 					{

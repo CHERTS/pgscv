@@ -2,6 +2,7 @@
 package collector
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -71,7 +72,7 @@ func NewFilesystemCollector(constLabels labels, settings model.CollectorSettings
 }
 
 // Update method collects filesystem usage statistics.
-func (c *filesystemCollector) Update(_ Config, ch chan<- prometheus.Metric) error {
+func (c *filesystemCollector) Update(_ context.Context, _ Config, ch chan<- prometheus.Metric) error {
 	stats, err := getFilesystemStats()
 	if err != nil {
 		return fmt.Errorf("get filesystem stats failed: %s", err)

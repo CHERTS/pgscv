@@ -2,13 +2,13 @@
 package collector
 
 import (
+	"context"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
-	"github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -80,84 +80,59 @@ func NewPostgresIndexesCollector(constLabels labels, settings model.CollectorSet
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresIndexesCollector) Update(config Config, ch chan<- prometheus.Metric) error {
+func (c *postgresIndexesCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
 	var err error
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
+	var cacheKey string
+	conn := config.DB
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	var res *model.PGResult
+
+	if config.CollectTopIndex > 0 {
+		cacheKey, res, _ = getFromCache(config.CacheConfig, config.ConnString, collectorPostgresIndexes, userIndexesQueryTopK, config.CollectTopIndex)
+		if res == nil {
+			res, err = conn.Query(ctx, userIndexesQueryTopK, config.CollectTopIndex)
+			if err != nil {
+				return err
+			}
+			saveToCache(collectorPostgresIndexes, wg, config.CacheConfig, cacheKey, res)
+		}
+	} else {
+		cacheKey, res, _ = getFromCache(config.CacheConfig, config.ConnString, collectorPostgresIndexes, userIndexesQuery)
+		if res == nil {
+			res, err = conn.Query(ctx, userIndexesQuery)
+			if err != nil {
+				return err
+			}
+			saveToCache(collectorPostgresIndexes, wg, config.CacheConfig, cacheKey, res)
+		}
 	}
-	defer conn.Close()
-
-	collect := func(conn *store.DB) error {
-		var res *model.PGResult
-		if config.CollectTopIndex > 0 {
-			res, err = conn.Query(userIndexesQueryTopK, config.CollectTopIndex)
-		} else {
-			res, err = conn.Query(userIndexesQuery)
-		}
-		if err != nil {
-			log.Warnf("get indexes stat failed: %s", err)
-			return nil
-		}
-
-		stats := parsePostgresIndexStats(res, c.indexes.labelNames)
-
-		for _, stat := range stats {
-			// always send idx scan metrics and indexes size
-			ch <- c.indexes.newConstMetric(stat.idxscan, stat.database, stat.schema, stat.table, stat.index, stat.key, stat.isvalid)
-			ch <- c.sizes.newConstMetric(stat.sizebytes, stat.database, stat.schema, stat.table, stat.index)
-
-			// avoid metrics spamming and send metrics only if they greater than zero.
-			if stat.idxtupread > 0 {
-				ch <- c.tuples.newConstMetric(stat.idxtupread, stat.database, stat.schema, stat.table, stat.index, "read")
-			}
-			if stat.idxtupfetch > 0 {
-				ch <- c.tuples.newConstMetric(stat.idxtupfetch, stat.database, stat.schema, stat.table, stat.index, "fetched")
-			}
-			if stat.idxread > 0 {
-				ch <- c.io.newConstMetric(stat.idxread, stat.database, stat.schema, stat.table, stat.index, "read")
-			}
-			if stat.idxhit > 0 {
-				ch <- c.io.newConstMetric(stat.idxhit, stat.database, stat.schema, stat.table, stat.index, "hit")
-			}
-		}
+	if err != nil {
+		log.Warnf("get indexes stat failed: %s", err)
 		return nil
 	}
 
-	if config.DatabasesRE == nil {
-		// service discovery case
-		err = collect(conn)
-		return err
-	}
+	stats := parsePostgresIndexStats(res, c.indexes.labelNames)
 
-	databases, err := listDatabases(conn)
-	if err != nil {
-		return err
-	}
+	for _, stat := range stats {
+		// always send idx scan metrics and indexes size
+		ch <- c.indexes.newConstMetric(stat.idxscan, stat.database, stat.schema, stat.table, stat.index, stat.key, stat.isvalid)
+		ch <- c.sizes.newConstMetric(stat.sizebytes, stat.database, stat.schema, stat.table, stat.index)
 
-	pgconfig, err := pgx.ParseConfig(config.ConnString)
-	if err != nil {
-		return err
-	}
-
-	for _, d := range databases {
-		// Skip database if not matched to allowed.
-		if !config.DatabasesRE.MatchString(d) {
-			continue
+		// avoid metrics spamming and send metrics only if they greater than zero.
+		if stat.idxtupread > 0 {
+			ch <- c.tuples.newConstMetric(stat.idxtupread, stat.database, stat.schema, stat.table, stat.index, "read")
 		}
-
-		pgconfig.Database = d
-		conn, err := store.NewWithConfig(pgconfig)
-		if err != nil {
-			return err
+		if stat.idxtupfetch > 0 {
+			ch <- c.tuples.newConstMetric(stat.idxtupfetch, stat.database, stat.schema, stat.table, stat.index, "fetched")
 		}
-		defer conn.Close()
-		err = collect(conn)
-		if err != nil {
-			return err
+		if stat.idxread > 0 {
+			ch <- c.io.newConstMetric(stat.idxread, stat.database, stat.schema, stat.table, stat.index, "read")
+		}
+		if stat.idxhit > 0 {
+			ch <- c.io.newConstMetric(stat.idxhit, stat.database, stat.schema, stat.table, stat.index, "hit")
 		}
 	}
-
 	return nil
 }
 

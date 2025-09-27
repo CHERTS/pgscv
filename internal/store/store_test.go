@@ -1,34 +1,42 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/jackc/pgproto3/v2"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestNew(t *testing.T) {
-	var testcases = []struct {
-		dsn   string
-		valid bool
-	}{
-		{dsn: TestPostgresConnStr, valid: true},
-		{dsn: "host=127.0.0.1 dbname=pgscv_fixtures user=pgscv sslmode=require", valid: true},
-		{dsn: "host=127.0.0.1 dbname=invalid user=pgscv sslmode=disable", valid: false},
-		{dsn: "invalid_string", valid: false},
-	}
+	var (
+		testcases = []struct {
+			dsn        string
+			valid      bool
+			parseError bool
+		}{
+			{dsn: TestPostgresConnStr, valid: true},
+			{dsn: "host=127.0.0.1 dbname=pgscv_fixtures user=pgscv sslmode=require", valid: true, parseError: false},
+			{dsn: "host=127.0.0.1 dbname=invalid user=pgscv sslmode=disable", valid: false, parseError: false},
+			{dsn: "invalid_string", valid: false, parseError: true},
+		}
+	)
 
 	for _, tc := range testcases {
 		db, err := New(tc.dsn, 0)
-		if tc.valid {
-			assert.NoError(t, err)
-			assert.NotNil(t, db)
-		} else {
+		if tc.parseError {
 			assert.Error(t, err)
-			assert.Nil(t, db)
+			continue
+		}
+		assert.NoError(t, err)
+		err = db.Conn().Ping(context.Background())
+		if tc.valid {
+			assert.Nil(t, err)
+		} else {
+			assert.NotNil(t, err)
 		}
 	}
 }
@@ -43,17 +51,18 @@ func TestNewWithConfig(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		config, err := pgx.ParseConfig(TestPostgresConnStr)
+		config, err := pgxpool.ParseConfig(TestPostgresConnStr)
 		assert.NoError(t, err)
 
-		config.Database = tc.database
+		config.ConnConfig.Database = tc.database
 		db, err := NewWithConfig(config)
+		assert.NotNil(t, db)
+		assert.NoError(t, err)
+		err = db.Conn().Ping(context.Background())
 		if tc.valid {
 			assert.NoError(t, err)
-			assert.NotNil(t, db)
 		} else {
 			assert.Error(t, err)
-			assert.Nil(t, db)
 		}
 	}
 }
@@ -73,8 +82,8 @@ func TestDB_Query(t *testing.T) {
 			want: &model.PGResult{
 				Nrows: 3,
 				Ncols: 5,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("example")}, {Name: []byte("one")}, {Name: []byte("two")}, {Name: []byte("three")}, {Name: []byte("four")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "example"}, {Name: "one"}, {Name: "two"}, {Name: "three"}, {Name: "four"},
 				},
 				Rows: [][]sql.NullString{
 					{{String: "example1", Valid: true}, {String: "2", Valid: true}, {String: "3", Valid: true}, {String: "4", Valid: true}, {String: "5", Valid: true}},
@@ -98,7 +107,7 @@ func TestDB_Query(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			res, err := db.Query(tc.query)
+			res, err := db.Query(context.Background(), tc.query)
 
 			if tc.valid {
 				assert.NoError(t, err)
@@ -119,10 +128,11 @@ func TestDB_Close(t *testing.T) {
 	db.Close()
 }
 
+//goland:noinspection SqlResolve
 func TestExample(t *testing.T) {
 	db := NewTest(t)
 	q := "select relkind::char as relkind from pg_class where relname in ('pg_class')"
-	_, err := db.query(q)
+	_, err := db.query(context.Background(), q)
 	fmt.Println(err)
 	//fmt.Println(res.Rows)
 }
@@ -151,4 +161,13 @@ func Test_isDataTypeSupported(t *testing.T) {
 	for _, tc := range testcases {
 		assert.Equal(t, tc.want, isDataTypeSupported(tc.t))
 	}
+}
+
+func Test_ListDatabases(t *testing.T) {
+	conn := NewTest(t)
+
+	databases, err := Databases(context.Background(), conn)
+	assert.NoError(t, err)
+	assert.Greater(t, len(databases), 0)
+	conn.Close()
 }

@@ -12,8 +12,23 @@
 #skip_conn_error_mode: false
 #url_prefix: "example.com"
 #conn_timeout: 3
-#throttling_interval: 25
+#pooler:
+#  max_conns: 10
+#  min_conns: 2
+#  min_idle_conns: 2
+#cache:
+#  type: "memcached"       # OR "in-memory"
+#  server: 127.0.0.1:11211 # use if cache type = "memcached"
+#  ttl: 30s
+#  collectors:
+#    postgres/indexes:
+#      ttl: 10m
+#    postgres/tables:
+#      ttl: 10m
+#    postgres/statements:
+#      ttl: 5m
 #discovery:
+# Monitoring Yandex.Cloud Managed Service for PostgreSQL 
 #  yandex_mdb:
 #    type: yandex-mdb
 #    config:
@@ -23,6 +38,11 @@
 #        password_from_env: DB_PASSWORD
 #        user: "postgres_exporter"
 #        refresh_interval: 5
+#        clusters:
+#          - name: ".*"
+#            db:
+#            exclude_name:
+#            exclude_db:
 #        target_labels:
 #          - name: folder_id
 #            value: "b1000000000000"
@@ -30,12 +50,23 @@
 #            value: 1m
 #          - name: __scrape_interval__
 #            value: 2m
-#        clusters:
-#          - name: ".*"
-#            db:
-#            exclude_name:
-#            exclude_db:
+# Monitoring multiple databases PostgreSQL instance
+#  cluster1:
+#    type: postgres
+#    config:
+#      conninfo: "postgres://postgres:postgres@127.0.0.1:7432/postgres"
+#      #password_from_env: PGPASSWORD
+#      db: ".*"
+#      exclude_db: "postgres"
+#      target_labels:
+#        - name: folder_id
+#          value: "b1000000000000"
+#        - name: __scrape_timeout__
+#          value: 1m
+#        - name: __scrape_interval__
+#          value: 2m
 services:
+# Monitoring only one database PostgreSQL per instance
   "postgres:5432":
     service_type: "postgres"
     conninfo: "postgres://postgres:password@127.0.0.1:5432/postgres"
@@ -44,9 +75,11 @@ services:
 #        value: 30s
 #      - name: __scrape_interval__
 #        value: 2m
+# Monitoring PgBouncer
   "pgbouncer:6432": 
     service_type: "pgbouncer"
     conninfo: "postgres://pgbouncer:password@127.0.0.1:6432/pgbouncer"
+# Monitoring Patroni
 #  "patroni1":
 #    service_type: "patroni"
 #    baseurl: "http://127.0.0.1:8008"
@@ -56,7 +89,6 @@ services:
 #  "patroni3":
 #    service_type: "patroni"
 #    baseurl: "http://127.0.0.1:8010"
-#databases: "^([a-zA-Z0-9])+_(prod|PROD)$"
 #disable_collectors:
 #  - system
 #  - system/pgscv

@@ -1,7 +1,7 @@
 services:
   pgscv:
     container_name: pgscv
-    image: cherts/pgscv:latest
+    image: cherts/pgscv:v1.0.0-beta1
     ports:
       - 9890:9890
     env_file:

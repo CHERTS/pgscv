@@ -3,6 +3,7 @@ package collector
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -38,7 +39,7 @@ func NewSysInfoCollector(constLabels labels, settings model.CollectorSettings) (
 }
 
 // Update implements Collector and exposes system info metrics.
-func (c *sysinfoCollector) Update(_ Config, ch chan<- prometheus.Metric) error {
+func (c *sysinfoCollector) Update(_ context.Context, _ Config, ch chan<- prometheus.Metric) error {
 	info, err := getSysInfo()
 	if err != nil {
 		return err

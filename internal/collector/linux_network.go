@@ -2,6 +2,7 @@
 package collector
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -34,7 +35,7 @@ func NewNetworkCollector(constLabels labels, settings model.CollectorSettings) (
 	}, nil
 }
 
-func (c *networkCollector) Update(_ Config, ch chan<- prometheus.Metric) error {
+func (c *networkCollector) Update(_ context.Context, _ Config, ch chan<- prometheus.Metric) error {
 	addresses, err := net.InterfaceAddrs()
 	if err != nil {
 		return err

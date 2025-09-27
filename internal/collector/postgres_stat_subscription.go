@@ -1,11 +1,12 @@
 package collector
 
 import (
+	"context"
 	"strconv"
+	"sync"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -123,70 +124,73 @@ func NewPostgresStatSubscriptionCollector(constLabels labels, settings model.Col
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresStatSubscriptionCollector) Update(config Config, ch chan<- prometheus.Metric) error {
+func (c *postgresStatSubscriptionCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
 	if config.pgVersion.Numeric < PostgresV10 {
 		log.Debugln("[postgres stat_subscription collector]: pg_stat_subscription view are not available, required Postgres 10 or newer")
 		return nil
 	}
-
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
 	// Collecting pg_stat_subscription since Postgres 10.
-	if config.pgVersion.Numeric >= PostgresV10 {
-		res, err := conn.Query(selectSubscriptionQuery(config.pgVersion.Numeric))
+
+	conn := config.DB
+
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	var err error
+
+	query := selectSubscriptionQuery(config.pgVersion.Numeric)
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresStatSubscription, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
 		if err != nil {
 			log.Warnf("get pg_stat_subscription failed: %s; skip", err)
-		} else {
-			// Parse pg_stat_subscription stats.
-			stats := parsePostgresSubscriptionStat(res, c.labelNames)
-			for _, stat := range stats {
-				if value, ok := stat.values["received_lsn"]; ok {
-					ch <- c.receivedLsn.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType)
-				}
-				if value, ok := stat.values["reported_lsn"]; ok {
-					ch <- c.reportedLsn.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType)
-				}
-				if value, ok := stat.values["msg_send_time"]; ok {
-					ch <- c.msgSendtime.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType)
-				}
-				if value, ok := stat.values["msg_recv_time"]; ok {
-					ch <- c.msgRecvtime.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType)
-				}
-				if value, ok := stat.values["reported_time"]; ok {
-					ch <- c.reportedTime.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType)
-				}
-				if value, ok := stat.values["apply_error_count"]; ok {
-					ch <- c.errorCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "apply")
-				}
-				if value, ok := stat.values["sync_error_count"]; ok {
-					ch <- c.errorCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "sync")
-				}
-				if value, ok := stat.values["confl_insert_exists"]; ok {
-					ch <- c.conflCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "insert_exists")
-				}
-				if value, ok := stat.values["confl_update_origin_differs"]; ok {
-					ch <- c.conflCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "update_origin_differs")
-				}
-				if value, ok := stat.values["confl_update_exists"]; ok {
-					ch <- c.conflCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "update_exists")
-				}
-				if value, ok := stat.values["confl_update_missing"]; ok {
-					ch <- c.conflCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "update_missing")
-				}
-				if value, ok := stat.values["confl_delete_origin_differs"]; ok {
-					ch <- c.conflCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "delete_origin_differs")
-				}
-				if value, ok := stat.values["confl_delete_missing"]; ok {
-					ch <- c.conflCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "delete_missing")
-				}
-				if value, ok := stat.values["confl_multiple_unique_conflicts"]; ok {
-					ch <- c.conflCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "multiple_unique_conflicts")
-				}
-			}
+			return err
+		}
+		saveToCache(collectorPostgresStatSubscription, wg, config.CacheConfig, cacheKey, res)
+	}
+	// Parse pg_stat_subscription stats.
+	stats := parsePostgresSubscriptionStat(res, c.labelNames)
+	for _, stat := range stats {
+		if value, ok := stat.values["received_lsn"]; ok {
+			ch <- c.receivedLsn.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType)
+		}
+		if value, ok := stat.values["reported_lsn"]; ok {
+			ch <- c.reportedLsn.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType)
+		}
+		if value, ok := stat.values["msg_send_time"]; ok {
+			ch <- c.msgSendtime.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType)
+		}
+		if value, ok := stat.values["msg_recv_time"]; ok {
+			ch <- c.msgRecvtime.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType)
+		}
+		if value, ok := stat.values["reported_time"]; ok {
+			ch <- c.reportedTime.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType)
+		}
+		if value, ok := stat.values["apply_error_count"]; ok {
+			ch <- c.errorCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "apply")
+		}
+		if value, ok := stat.values["sync_error_count"]; ok {
+			ch <- c.errorCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "sync")
+		}
+		if value, ok := stat.values["confl_insert_exists"]; ok {
+			ch <- c.conflCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "insert_exists")
+		}
+		if value, ok := stat.values["confl_update_origin_differs"]; ok {
+			ch <- c.conflCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "update_origin_differs")
+		}
+		if value, ok := stat.values["confl_update_exists"]; ok {
+			ch <- c.conflCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "update_exists")
+		}
+		if value, ok := stat.values["confl_update_missing"]; ok {
+			ch <- c.conflCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "update_missing")
+		}
+		if value, ok := stat.values["confl_delete_origin_differs"]; ok {
+			ch <- c.conflCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "delete_origin_differs")
+		}
+		if value, ok := stat.values["confl_delete_missing"]; ok {
+			ch <- c.conflCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "delete_missing")
+		}
+		if value, ok := stat.values["confl_multiple_unique_conflicts"]; ok {
+			ch <- c.conflCount.newConstMetric(value, stat.SubID, stat.SubName, stat.WorkerType, "multiple_unique_conflicts")
 		}
 	}
 

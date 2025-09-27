@@ -3,9 +3,12 @@ package collector
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/cherts/pgscv/internal/cache"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"net"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -13,7 +16,6 @@ import (
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/cherts/pgscv/internal/store"
-	"github.com/jackc/pgx/v4"
 )
 
 // Config defines collector's global configuration.
@@ -29,8 +31,6 @@ type Config struct {
 	NoTrackMode bool
 	// postgresServiceConfig defines collector's options specific for Postgres service
 	postgresServiceConfig
-	// DatabasesRE defines regexp with databases from which builtin metrics should be collected.
-	DatabasesRE *regexp.Regexp
 	// Settings defines collectors settings propagated from main YAML configuration.
 	Settings         model.CollectorsSettings
 	CollectTopTable  int
@@ -40,6 +40,8 @@ type Config struct {
 	TargetLabels     *map[string]string
 	ConnTimeout      int // in seconds
 	ConcurrencyLimit *int
+	CacheConfig      *cache.Config
+	DB               *store.DB
 }
 
 // postgresServiceConfig defines Postgres-specific stuff required during collecting Postgres metrics.
@@ -60,8 +62,6 @@ type postgresServiceConfig struct {
 	logDestination string
 	// pgStatStatements defines is pg_stat_statements available in shared_preload_libraries and available for queries.
 	pgStatStatements bool
-	// pgStatStatementsDatabase defines the database name where pg_stat_statements is available.
-	pgStatStatementsDatabase string
 	// pgStatStatementsSchema defines the schema name where pg_stat_statements is installed.
 	pgStatStatementsSchema string
 	// rolConnLimit defines connection limit for the role used by the collector.
@@ -90,16 +90,16 @@ func newPostgresServiceConfig(connStr string, connTimeout int) (postgresServiceC
 		return config, nil
 	}
 
-	pgconfig, err := pgx.ParseConfig(connStr)
+	pgconfig, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
 		return config, err
 	}
 	if connTimeout > 0 {
-		pgconfig.ConnectTimeout = time.Duration(connTimeout) * time.Second
+		pgconfig.ConnConfig.ConnectTimeout = time.Duration(connTimeout) * time.Second
 	}
 
 	// Determine is service running locally.
-	config.localService = isAddressLocal(pgconfig.Host)
+	config.localService = isAddressLocal(pgconfig.ConnConfig.Host)
 
 	conn, err := store.NewWithConfig(pgconfig)
 	if err != nil {
@@ -212,7 +212,7 @@ func newPostgresServiceConfig(connStr string, connTimeout int) (postgresServiceC
 	config.logDestination = setting
 
 	// Discover pg_stat_statements.
-	exists, database, schema, err := discoverPgStatStatements(connStr)
+	exists, schema, err := discoverPgStatStatements(conn)
 	if err != nil {
 		return config, err
 	}
@@ -222,7 +222,6 @@ func newPostgresServiceConfig(connStr string, connTimeout int) (postgresServiceC
 	}
 
 	config.pgStatStatements = exists
-	config.pgStatStatementsDatabase = database
 	config.pgStatStatementsSchema = schema
 	return config, nil
 }
@@ -264,65 +263,28 @@ func isAddressLocal(addr string) bool {
 	return false
 }
 
-// discoverPgStatStatements discovers pg_stat_statements, what database and schema it is installed.
-func discoverPgStatStatements(connStr string) (bool, string, string, error) {
-	pgconfig, err := pgx.ParseConfig(connStr)
-	if err != nil {
-		return false, "", "", err
-	}
-
-	conn, err := store.NewWithConfig(pgconfig)
-	if err != nil {
-		return false, "", "", err
-	}
-	defer conn.Close()
+// discoverPgStatStatements discovers pg_stat_statements, what schema it is installed.
+func discoverPgStatStatements(conn *store.DB) (bool, string, error) {
 
 	var setting string
-	err = conn.Conn().QueryRow(context.Background(), "SELECT setting FROM pg_settings WHERE name = 'shared_preload_libraries'").Scan(&setting)
+	err := conn.Conn().QueryRow(context.Background(), "SELECT setting FROM pg_settings WHERE name = 'shared_preload_libraries'").Scan(&setting)
 	if err != nil {
-		return false, "", "", err
+		conn.Close()
+		return false, "", err
 	}
 
 	// If pg_stat_statements is not enabled globally, no reason to continue.
 	if !strings.Contains(setting, "pg_stat_statements") {
-		return false, "", "", nil
+		conn.Close()
+		return false, "", nil
 	}
 
 	// Check for pg_stat_statements in default database specified in connection string.
 	if schema := extensionInstalledSchema(conn, "pg_stat_statements"); schema != "" {
-		return true, conn.Conn().Config().Database, schema, nil
+		conn.Close()
+		return true, schema, nil
 	}
-
-	// Pessimistic case.
-	// If we're here it means pg_stat_statements is not available
-	// and we have to walk through all database and looking for it.
-
-	// Get databases list from current connection.
-	databases, err := listDatabases(conn)
-	if err != nil {
-		return false, "", "", err
-	}
-
-	// Establish connection to each database in the list and check where pg_stat_statements is installed.
-	for _, d := range databases {
-		pgconfig.Database = d
-		conn, err := store.NewWithConfig(pgconfig)
-		if err != nil {
-			log.Warnf("connect to database '%s' failed: %s; skip", pgconfig.Database, err)
-			continue
-		}
-		defer conn.Close()
-
-		// If pg_stat_statements found, update source and return connection.
-		if schema := extensionInstalledSchema(conn, "pg_stat_statements"); schema != "" {
-			return true, conn.Conn().Config().Database, schema, nil
-		}
-	}
-
-	// No luck.
-	// If we are here it means all database checked and
-	// pg_stat_statements is not found (not installed).
-	return false, "", "", nil
+	return false, "", nil
 }
 
 // extensionInstalledSchema returns schema name where extension is installed, or empty if not installed.
@@ -333,7 +295,7 @@ func extensionInstalledSchema(db *store.DB, name string) string {
 	err := db.Conn().
 		QueryRow(context.Background(), "SELECT extnamespace::regnamespace FROM pg_extension WHERE extname = $1", name).
 		Scan(&schema)
-	if err != nil && err != pgx.ErrNoRows {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		log.Errorf("failed to check extensions '%s' in pg_extension: %s", name, err)
 		return ""
 	}

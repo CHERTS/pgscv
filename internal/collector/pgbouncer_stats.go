@@ -2,11 +2,11 @@
 package collector
 
 import (
+	"context"
 	"strconv"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -66,16 +66,11 @@ func NewPgbouncerStatsCollector(constLabels labels, settings model.CollectorSett
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *pgbouncerStatsCollector) Update(config Config, ch chan<- prometheus.Metric) error {
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
+func (c *pgbouncerStatsCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
+	conn := config.DB
+	res, err := conn.Query(ctx, pgbouncerStatsQuery)
 	if err != nil {
 		ch <- c.up.newConstMetric(0)
-		return err
-	}
-	defer conn.Close()
-
-	res, err := conn.Query(pgbouncerStatsQuery)
-	if err != nil {
 		return err
 	}
 

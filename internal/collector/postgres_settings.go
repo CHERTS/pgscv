@@ -2,15 +2,16 @@
 package collector
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -41,19 +42,21 @@ func NewPostgresSettingsCollector(constLabels labels, settings model.CollectorSe
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresSettingsCollector) Update(config Config, ch chan<- prometheus.Metric) error {
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
+func (c *postgresSettingsCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
+	conn := config.DB
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	var err error
 	// For complete list of displayable names of GUC's sources types check guc.c (see GucSource_Names[]).
 	query := "SELECT name, setting, unit, vartype FROM pg_show_all_settings() " +
 		"WHERE source IN ('default','configuration file','override','environment variable','command line','global')"
-	res, err := conn.Query(query)
-	if err != nil {
-		return err
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresSettings, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
+		if err != nil {
+			return err
+		}
+		saveToCache(collectorPostgresSettings, wg, config.CacheConfig, cacheKey, res)
 	}
 
 	settings := parsePostgresSettings(res)
@@ -71,9 +74,13 @@ func (c *postgresSettingsCollector) Update(config Config, ch chan<- prometheus.M
 	}
 
 	query = `SELECT name, setting FROM pg_show_all_settings() WHERE name IN ('config_file','hba_file','ident_file','data_directory')`
-	res, err = conn.Query(query)
-	if err != nil {
-		return err
+	cacheKey, res, _ = getFromCache(config.CacheConfig, config.ConnString, collectorPostgresSettings, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
+		if err != nil {
+			return err
+		}
+		saveToCache(collectorPostgresSettings, wg, config.CacheConfig, cacheKey, res)
 	}
 
 	files := parsePostgresFiles(res)

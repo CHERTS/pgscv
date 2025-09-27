@@ -2,11 +2,12 @@
 package collector
 
 import (
+	"context"
 	"strconv"
+	"sync"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -36,16 +37,20 @@ func NewPostgresConflictsCollector(constLabels labels, settings model.CollectorS
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresConflictsCollector) Update(config Config, ch chan<- prometheus.Metric) error {
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+func (c *postgresConflictsCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
+	conn := config.DB
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	var err error
 
-	res, err := conn.Query(selectDatabaseConflictsQuery(config.pgVersion.Numeric))
-	if err != nil {
-		return err
+	query := selectDatabaseConflictsQuery(config.pgVersion.Numeric)
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresConflicts, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
+		if err != nil {
+			return err
+		}
+		saveToCache(collectorPostgresConflicts, wg, config.CacheConfig, cacheKey, res)
 	}
 
 	stats := parsePostgresConflictStats(res, c.conflicts.labelNames)

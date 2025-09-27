@@ -2,10 +2,10 @@ package collector
 
 import (
 	"database/sql"
+	"github.com/jackc/pgx/v5/pgconn"
 	"testing"
 
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -45,10 +45,10 @@ func Test_parsePostgresWalStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 7,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("recovery")}, {Name: []byte("recovery_paused")},
-					{Name: []byte("wal_records")}, {Name: []byte("wal_fpi")}, {Name: []byte("wal_bytes")}, {Name: []byte("wal_written")},
-					{Name: []byte("wal_buffers_full")}, {Name: []byte("reset_time")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "recovery"}, {Name: "recovery_paused"},
+					{Name: "wal_records"}, {Name: "wal_fpi"}, {Name: "wal_bytes"}, {Name: "wal_written"},
+					{Name: "wal_buffers_full"}, {Name: "reset_time"},
 				},
 				Rows: [][]sql.NullString{
 					{
@@ -69,11 +69,11 @@ func Test_parsePostgresWalStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 11,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("recovery")}, {Name: []byte("recovery_paused")},
-					{Name: []byte("wal_records")}, {Name: []byte("wal_fpi")}, {Name: []byte("wal_bytes")}, {Name: []byte("wal_written")},
-					{Name: []byte("wal_buffers_full")}, {Name: []byte("wal_write")}, {Name: []byte("wal_sync")},
-					{Name: []byte("wal_write_time")}, {Name: []byte("wal_sync_time")}, {Name: []byte("reset_time")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "recovery"}, {Name: "recovery_paused"},
+					{Name: "wal_records"}, {Name: "wal_fpi"}, {Name: "wal_bytes"}, {Name: "wal_written"},
+					{Name: "wal_buffers_full"}, {Name: "wal_write"}, {Name: "wal_sync"},
+					{Name: "wal_write_time"}, {Name: "wal_sync_time"}, {Name: "reset_time"},
 				},
 				Rows: [][]sql.NullString{
 					{
@@ -96,8 +96,8 @@ func Test_parsePostgresWalStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 2,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("recovery")}, {Name: []byte("recovery_paused")}, {Name: []byte("wal_written")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "recovery"}, {Name: "recovery_paused"}, {Name: "wal_written"},
 				},
 				Rows: [][]sql.NullString{{{String: "0", Valid: true}, {String: "0", Valid: true}, {String: "123456789", Valid: true}}},
 			},

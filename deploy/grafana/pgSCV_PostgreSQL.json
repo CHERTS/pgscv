@@ -15,7 +15,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "11.5.0-219443"
+      "version": "11.6.0-227265"
     },
     {
       "type": "datasource",
@@ -55,10 +55,22 @@
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
         "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${ds}"
+        },
+        "enable": true,
+        "expr": "sum(changes(postgres_start_time_seconds{instance=\"$instance\",service_id=\"$postgres\"}[$__interval])) by(instance, service_id)",
+        "hide": false,
+        "iconColor": "yellow",
+        "name": "restarts",
+        "textFormat": "{{service_id}} restarted"
       }
     ]
   },
-  "description": "PostgreSQL dashboard for pgSCV metrics (Prometheus version, pgSCV v0.14.0 edition)",
+  "description": "PostgreSQL dashboard for pgSCV metrics (Prometheus version, pgSCV v1.0.0 edition)",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -120,7 +132,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${ds}"
+        "uid": "${DS_VICTORIAMETRICS}"
       },
       "description": "Current status of PostgreSQL service.",
       "fieldConfig": {
@@ -147,8 +159,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
-                "value": null
+                "color": "red"
               },
               {
                 "color": "green",
@@ -185,7 +196,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -234,8 +245,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "light-blue",
@@ -272,7 +282,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -307,8 +317,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "yellow",
@@ -353,7 +362,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -362,7 +371,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(rate(postgres_statements_calls_total{instance=\"$instance\",service_id=\"$postgres\",user!~\"^$exclude$\"}[1m]))",
+          "expr": "sum(rate(postgres_statements_calls_total{instance=\"$instance\",service_id=\"$postgres\",user!~\"^$exclude$\"}[$interval]))",
           "instant": true,
           "interval": "",
           "legendFormat": "statements",
@@ -388,8 +397,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "yellow",
@@ -430,7 +438,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -439,7 +447,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(rate(postgres_log_messages_total{level!=\"log\",instance=\"$instance\",service_id=\"$postgres\"}[1m]))",
+          "expr": "sum(rate(postgres_log_messages_total{level!=\"log\",instance=\"$instance\",service_id=\"$postgres\"}[$interval]))",
           "instant": false,
           "interval": "",
           "legendFormat": "response time",
@@ -465,8 +473,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "yellow",
@@ -507,7 +514,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -516,7 +523,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(rate(postgres_statements_time_seconds_all_total{instance=\"$instance\",service_id=\"$postgres\",user!~\"^$exclude$\"}[1m])) / sum(rate(postgres_statements_calls_total{instance=\"$instance\",service_id=\"$postgres\",user!~\"^$exclude$\"}[1m]))",
+          "expr": "sum(rate(postgres_statements_time_seconds_all_total{instance=\"$instance\",service_id=\"$postgres\",user!~\"^$exclude$\"}[$interval])) / sum(rate(postgres_statements_calls_total{instance=\"$instance\",service_id=\"$postgres\",user!~\"^$exclude$\"}[$interval]))",
           "instant": false,
           "interval": "",
           "legendFormat": "response time",
@@ -542,8 +549,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "yellow",
@@ -584,7 +590,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -619,8 +625,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "#EAB839",
@@ -665,7 +670,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -700,8 +705,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -738,7 +742,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -773,8 +777,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -811,7 +814,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -846,8 +849,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "yellow",
@@ -892,7 +894,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -927,8 +929,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -965,7 +966,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -1000,8 +1001,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1038,7 +1038,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -1073,8 +1073,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1111,7 +1110,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -1146,8 +1145,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "yellow",
@@ -1192,7 +1190,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -1248,8 +1246,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "light-blue",
@@ -1286,7 +1283,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -1321,8 +1318,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "#EAB839",
@@ -1367,7 +1363,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -1402,8 +1398,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "dark-red",
@@ -1440,7 +1435,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -1475,8 +1470,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "dark-red",
@@ -1513,7 +1507,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0-219443",
+      "pluginVersion": "11.6.0-227265",
       "targets": [
         {
           "datasource": {
@@ -1636,7 +1630,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -1645,7 +1639,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum(rate(postgres_statements_calls_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}[1m]))",
+              "expr": "sum(rate(postgres_statements_calls_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}[$interval]))",
               "interval": "",
               "legendFormat": "statements",
               "range": true,
@@ -1658,7 +1652,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum(rate(postgres_database_xact_commits_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}[1m]))",
+              "expr": "sum(rate(postgres_database_xact_commits_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}[$interval]))",
               "hide": false,
               "interval": "",
               "legendFormat": "commits",
@@ -1672,7 +1666,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum(rate(postgres_database_xact_rollbacks_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}[1m]))",
+              "expr": "sum(rate(postgres_database_xact_rollbacks_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}[$interval]))",
               "hide": false,
               "interval": "",
               "legendFormat": "rollbacks",
@@ -1761,7 +1755,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -1932,7 +1926,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 209
+            "y": 25
           },
           "id": 11,
           "options": {
@@ -1949,7 +1943,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -2120,7 +2114,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 209
+            "y": 25
           },
           "id": 92,
           "options": {
@@ -2137,7 +2131,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -2307,7 +2301,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 281
+            "y": 33
           },
           "id": 95,
           "options": {
@@ -2507,7 +2501,7 @@
             "h": 8,
             "w": 9,
             "x": 0,
-            "y": 1050
+            "y": 634
           },
           "id": 78,
           "options": {
@@ -2524,7 +2518,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -2532,7 +2526,7 @@
                 "uid": "${DS_VICTORIAMETRICS}"
               },
               "editorMode": "code",
-              "expr": "sum by (level) (increase(postgres_log_messages_total{instance=\"$instance\",service_id=\"$postgres\"}[1m]))",
+              "expr": "sum by (level) (increase(postgres_log_messages_total{instance=\"$instance\",service_id=\"$postgres\"}[$interval]))",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -2620,7 +2614,7 @@
             "h": 8,
             "w": 9,
             "x": 9,
-            "y": 1050
+            "y": 634
           },
           "id": 80,
           "options": {
@@ -2637,7 +2631,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -2691,7 +2685,7 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 1050
+            "y": 634
           },
           "id": 83,
           "options": {
@@ -2706,7 +2700,7 @@
             },
             "showHeader": true
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -2813,7 +2807,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 1051
+            "y": 67
           },
           "id": 19,
           "options": {
@@ -2830,7 +2824,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -2839,7 +2833,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "topk(5, (rate(postgres_statements_calls_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}[1m])) + on(database,user,queryid) group_left(query) (0 * postgres_statements_query_info{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}))",
+              "expr": "topk(5, (rate(postgres_statements_calls_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}[$interval])) + on(database,user,queryid) group_left(query) (0 * postgres_statements_query_info{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}))",
               "interval": "",
               "legendFormat": "{{database}}/{{user}}/{{query}}",
               "range": true,
@@ -2910,7 +2904,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 1051
+            "y": 67
           },
           "id": 20,
           "options": {
@@ -2927,7 +2921,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -2936,7 +2930,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "topk(5, (rate(postgres_statements_rows_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}[1m])) + on(database,user,queryid) group_left(query) (0 * postgres_statements_query_info{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}))",
+              "expr": "topk(5, (rate(postgres_statements_rows_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}[$interval])) + on(database,user,queryid) group_left(query) (0 * postgres_statements_query_info{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}))",
               "interval": "",
               "legendFormat": "{{database}}/{{user}}/{{query}}",
               "range": true,
@@ -3008,7 +3002,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 1171
+            "y": 75
           },
           "id": 21,
           "options": {
@@ -3025,7 +3019,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -3034,7 +3028,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "topk(5, (rate(postgres_statements_time_seconds_all_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}[1m])) + on(database,user,queryid) group_left(query) (0 * postgres_statements_query_info{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}))",
+              "expr": "topk(5, (rate(postgres_statements_time_seconds_all_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}[$interval])) + on(database,user,queryid) group_left(query) (0 * postgres_statements_query_info{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}))",
               "interval": "",
               "legendFormat": "{{database}}/{{user}}/{{query}}",
               "range": true,
@@ -3106,7 +3100,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 1171
+            "y": 75
           },
           "id": 22,
           "options": {
@@ -3123,7 +3117,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -3132,7 +3126,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "topk(5, sum without (mode) (rate(postgres_statements_time_seconds_total{mode=~\"ioread|iowrite\",instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}[1m])) + on(database,user,queryid) group_left(query) (0 * postgres_statements_query_info{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}))",
+              "expr": "topk(5, sum without (mode) (rate(postgres_statements_time_seconds_total{mode=~\"ioread|iowrite\",instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}[$interval])) + on(database,user,queryid) group_left(query) (0 * postgres_statements_query_info{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\",user!~\"^$exclude$\"}))",
               "interval": "",
               "legendFormat": "{{database}}/{{user}}/{{query}}",
               "range": true,
@@ -3217,7 +3211,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 3348
+            "y": 660
           },
           "id": 27,
           "options": {
@@ -3234,7 +3228,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-217209",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -3312,7 +3306,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 3348
+            "y": 660
           },
           "id": 28,
           "options": {
@@ -3329,7 +3323,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-217209",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -3407,7 +3401,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 3356
+            "y": 668
           },
           "id": 26,
           "options": {
@@ -3424,7 +3418,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-217209",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -3519,7 +3513,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 3356
+            "y": 668
           },
           "id": 29,
           "options": {
@@ -3536,7 +3530,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-217209",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -3545,7 +3539,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum(increase(postgres_database_deadlocks_total{instance=\"$instance\",service_id=\"$postgres\"}[1m]))",
+              "expr": "sum(increase(postgres_database_deadlocks_total{instance=\"$instance\",service_id=\"$postgres\"}[$interval]))",
               "interval": "",
               "legendFormat": "deadlocks",
               "range": true,
@@ -3631,7 +3625,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 21
+            "y": 465
           },
           "id": 41,
           "options": {
@@ -3648,7 +3642,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -3727,7 +3721,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 21
+            "y": 465
           },
           "id": 38,
           "options": {
@@ -3744,7 +3738,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -3802,8 +3796,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "#346f36cc",
-                    "value": null
+                    "color": "#346f36cc"
                   }
                 ]
               }
@@ -3839,7 +3832,7 @@
             "h": 4,
             "w": 24,
             "x": 0,
-            "y": 22
+            "y": 466
           },
           "id": 127,
           "options": {
@@ -3854,7 +3847,7 @@
             },
             "showHeader": true
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -4098,7 +4091,7 @@
             "h": 8,
             "w": 9,
             "x": 0,
-            "y": 35
+            "y": 327
           },
           "id": 33,
           "options": {
@@ -4115,17 +4108,19 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${DS_VICTORIAMETRICS}"
               },
+              "editorMode": "code",
               "exemplar": true,
-              "expr": "rate(postgres_wal_written_bytes_total{instance=\"$instance\",service_id=\"$postgres\"}[1m])",
+              "expr": "rate(postgres_wal_written_bytes_total{instance=\"$instance\",service_id=\"$postgres\"}[$interval])",
               "interval": "",
               "legendFormat": "WAL",
+              "range": true,
               "refId": "A"
             }
           ],
@@ -4221,9 +4216,42 @@
                   {
                     "id": "color",
                     "value": {
-                      "fixedColor": "dark-red",
+                      "fixedColor": "yellow",
                       "mode": "fixed"
                     }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "dash": [
+                        10,
+                        10
+                      ],
+                      "fill": "dash"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Limit by max_slot_wal_keep_size"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "red",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
                   }
                 ]
               }
@@ -4233,7 +4261,7 @@
             "h": 8,
             "w": 9,
             "x": 9,
-            "y": 35
+            "y": 327
           },
           "id": 35,
           "options": {
@@ -4250,7 +4278,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -4277,6 +4305,19 @@
               "legendFormat": "Limit by max_wal_size",
               "range": true,
               "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_VICTORIAMETRICS}"
+              },
+              "editorMode": "code",
+              "expr": "postgres_service_settings_info{instance=\"$instance\",service_id=\"$postgres\",name=\"max_slot_wal_keep_size\"}",
+              "hide": false,
+              "instant": false,
+              "legendFormat": "Limit by max_slot_wal_keep_size",
+              "range": true,
+              "refId": "C"
             }
           ],
           "title": "WAL directory size",
@@ -4318,7 +4359,7 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 35
+            "y": 327
           },
           "id": 87,
           "options": {
@@ -4333,7 +4374,7 @@
             },
             "showHeader": true
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -4453,7 +4494,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 100
+            "y": 488
           },
           "id": 34,
           "options": {
@@ -4470,7 +4511,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -4549,7 +4590,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 100
+            "y": 488
           },
           "id": 42,
           "options": {
@@ -4566,17 +4607,19 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${DS_VICTORIAMETRICS}"
               },
+              "editorMode": "code",
               "exemplar": true,
-              "expr": "increase(postgres_archiver_archived_total{instance=\"$instance\",service_id=\"$postgres\"}[1m])",
+              "expr": "increase(postgres_archiver_archived_total{instance=\"$instance\",service_id=\"$postgres\"}[$interval])",
               "interval": "",
               "legendFormat": "archived",
+              "range": true,
               "refId": "A"
             },
             {
@@ -4584,11 +4627,13 @@
                 "type": "prometheus",
                 "uid": "${ds}"
               },
+              "editorMode": "code",
               "exemplar": true,
-              "expr": "increase(postgres_archiver_failed_total{instance=\"$instance\",service_id=\"$postgres\"}[1m])",
+              "expr": "increase(postgres_archiver_failed_total{instance=\"$instance\",service_id=\"$postgres\"}[$interval])",
               "hide": false,
               "interval": "",
               "legendFormat": "failed",
+              "range": true,
               "refId": "B"
             }
           ],
@@ -4644,7 +4689,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 108
+            "y": 520
           },
           "id": 85,
           "options": {
@@ -4659,7 +4704,7 @@
             },
             "showHeader": true
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -4852,7 +4897,7 @@
             "h": 8,
             "w": 9,
             "x": 0,
-            "y": 37
+            "y": 489
           },
           "id": 46,
           "options": {
@@ -4869,7 +4914,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -4963,7 +5008,7 @@
             "h": 8,
             "w": 9,
             "x": 9,
-            "y": 37
+            "y": 489
           },
           "id": 47,
           "options": {
@@ -4980,17 +5025,19 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${DS_VICTORIAMETRICS}"
               },
+              "editorMode": "code",
               "exemplar": true,
-              "expr": "topk(5, increase(postgres_table_maintenance_total{type=\"autovacuum\",instance=\"$instance\",service_id=\"$postgres\"}[1m]))",
+              "expr": "topk(5, increase(postgres_table_maintenance_total{type=\"autovacuum\",instance=\"$instance\",service_id=\"$postgres\"}[$interval]))",
               "interval": "",
               "legendFormat": "{{ table }}",
+              "range": true,
               "refId": "A"
             }
           ],
@@ -5033,7 +5080,7 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 37
+            "y": 489
           },
           "id": 86,
           "options": {
@@ -5048,7 +5095,7 @@
             },
             "showHeader": true
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -5200,7 +5247,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 77
+            "y": 497
           },
           "id": 48,
           "options": {
@@ -5217,7 +5264,7 @@
               "sort": "asc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -5344,7 +5391,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 85
+            "y": 505
           },
           "id": 88,
           "options": {
@@ -5361,7 +5408,7 @@
               "sort": "asc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -5486,7 +5533,7 @@
             "h": 8,
             "w": 9,
             "x": 0,
-            "y": 118
+            "y": 338
           },
           "id": 52,
           "options": {
@@ -5503,17 +5550,19 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${DS_VICTORIAMETRICS}"
               },
+              "editorMode": "code",
               "exemplar": true,
-              "expr": "increase(postgres_checkpoints_total{instance=\"$instance\",service_id=\"$postgres\"}[1m])",
+              "expr": "increase(postgres_checkpoints_total{instance=\"$instance\",service_id=\"$postgres\"}[$interval])",
               "interval": "",
               "legendFormat": "{{ checkpoint }}",
+              "range": true,
               "refId": "A"
             }
           ],
@@ -5657,7 +5706,7 @@
             "h": 8,
             "w": 9,
             "x": 9,
-            "y": 118
+            "y": 338
           },
           "id": 53,
           "options": {
@@ -5674,7 +5723,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -5683,7 +5732,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "rate(postgres_written_bytes_total{instance=\"$instance\",service_id=\"$postgres\"}[1m])",
+              "expr": "rate(postgres_written_bytes_total{instance=\"$instance\",service_id=\"$postgres\"}[$interval])",
               "interval": "",
               "legendFormat": "{{ process }}",
               "range": true,
@@ -5694,11 +5743,13 @@
                 "type": "prometheus",
                 "uid": "${ds}"
               },
+              "editorMode": "code",
               "exemplar": true,
-              "expr": "rate(postgres_wal_written_bytes_total{instance=\"$instance\",service_id=\"$postgres\"}[1m])",
+              "expr": "rate(postgres_wal_written_bytes_total{instance=\"$instance\",service_id=\"$postgres\"}[$interval])",
               "hide": false,
               "interval": "",
               "legendFormat": "wal",
+              "range": true,
               "refId": "B"
             },
             {
@@ -5706,11 +5757,13 @@
                 "type": "prometheus",
                 "uid": "${DS_VICTORIAMETRICS}"
               },
+              "editorMode": "code",
               "exemplar": true,
-              "expr": "sum(rate(postgres_database_temp_bytes_total{instance=\"$instance\",service_id=\"$postgres\"}[1m]))",
+              "expr": "sum(rate(postgres_database_temp_bytes_total{instance=\"$instance\",service_id=\"$postgres\"}[$interval]))",
               "hide": false,
               "interval": "",
               "legendFormat": "tempfiles",
+              "range": true,
               "refId": "C"
             }
           ],
@@ -5753,7 +5806,7 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 118
+            "y": 338
           },
           "id": 122,
           "options": {
@@ -5768,7 +5821,7 @@
             },
             "showHeader": true
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -5888,7 +5941,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 2017
+            "y": 743
           },
           "id": 102,
           "options": {
@@ -5905,7 +5958,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -5914,7 +5967,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_read_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_read_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[$interval]))>0",
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
               "range": true,
@@ -5927,7 +5980,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_read_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_read_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -5941,7 +5994,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_read_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_read_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -5955,7 +6008,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_read_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_read_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -5969,7 +6022,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type) (rate(postgres_stat_io_read_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type) (rate(postgres_stat_io_read_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "Other",
@@ -6041,7 +6094,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 2017
+            "y": 743
           },
           "id": 104,
           "options": {
@@ -6058,7 +6111,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -6067,7 +6120,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_write_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_write_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[$interval]))>0",
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
               "range": true,
@@ -6080,7 +6133,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_write_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_write_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -6094,7 +6147,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_write_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_write_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -6108,7 +6161,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_write_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_write_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -6122,7 +6175,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type) (rate(postgres_stat_io_write_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type) (rate(postgres_stat_io_write_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "Other",
@@ -6194,7 +6247,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 2025
+            "y": 751
           },
           "id": 107,
           "options": {
@@ -6211,7 +6264,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -6220,7 +6273,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_read_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_read_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -6234,7 +6287,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_read_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_read_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -6248,7 +6301,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_read_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_read_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -6262,7 +6315,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_read_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_read_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -6276,7 +6329,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum(increase(postgres_stat_io_read_time{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[1m]))>0",
+              "expr": "sum(increase(postgres_stat_io_read_time{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "Other",
@@ -6348,7 +6401,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 2025
+            "y": 751
           },
           "id": 108,
           "options": {
@@ -6365,7 +6418,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -6374,7 +6427,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_write_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_write_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -6388,7 +6441,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_write_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_write_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -6402,7 +6455,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_write_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_write_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -6416,7 +6469,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_write_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (increase(postgres_stat_io_write_time{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -6430,7 +6483,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum(increase(postgres_stat_io_write_time{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[1m]))>0",
+              "expr": "sum(increase(postgres_stat_io_write_time{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "Other",
@@ -6502,7 +6555,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 2033
+            "y": 759
           },
           "id": 109,
           "options": {
@@ -6519,7 +6572,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -6528,7 +6581,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_writebacks{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[1m])*8192)>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_writebacks{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[$interval])*8192)>0",
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
               "range": true,
@@ -6541,7 +6594,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_writebacks{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[1m])*8192)>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_writebacks{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[$interval])*8192)>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -6555,7 +6608,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_writebacks{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[1m])*8192)>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_writebacks{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[$interval])*8192)>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -6569,7 +6622,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_writebacks{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[1m])*8192)>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_writebacks{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[$interval])*8192)>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -6583,7 +6636,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type) (rate(postgres_stat_io_writebacks{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[1m])*8192)>0",
+              "expr": "sum by (backend_type) (rate(postgres_stat_io_writebacks{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[$interval])*8192)>0",
               "hide": false,
               "interval": "",
               "legendFormat": "Other",
@@ -6655,7 +6708,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 2033
+            "y": 759
           },
           "id": 119,
           "options": {
@@ -6672,7 +6725,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -6681,7 +6734,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_extend_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_extend_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[$interval]))>0",
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
               "range": true,
@@ -6694,7 +6747,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_extend_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_extend_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -6708,7 +6761,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_extend_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_extend_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -6722,7 +6775,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_extend_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_extend_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -6736,7 +6789,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type) (rate(postgres_stat_io_extend_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type) (rate(postgres_stat_io_extend_bytes{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "Other",
@@ -6808,7 +6861,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 2041
+            "y": 767
           },
           "id": 105,
           "options": {
@@ -6825,7 +6878,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -6834,7 +6887,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_evictions{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_evictions{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[$interval]))>0",
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
               "range": true,
@@ -6847,7 +6900,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_evictions{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_evictions{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -6861,7 +6914,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_evictions{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_evictions{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -6875,7 +6928,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_evictions{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_evictions{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -6889,7 +6942,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type) (rate(postgres_stat_io_evictions{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type) (rate(postgres_stat_io_evictions{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "Other",
@@ -6961,7 +7014,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 2041
+            "y": 767
           },
           "id": 106,
           "options": {
@@ -6978,7 +7031,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -6987,7 +7040,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_fsyncs{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_fsyncs{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[$interval]))>0",
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
               "range": true,
@@ -7000,7 +7053,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_fsyncs{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_fsyncs{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -7014,7 +7067,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_fsyncs{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_fsyncs{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -7028,7 +7081,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_fsyncs{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_fsyncs{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -7042,7 +7095,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type) (rate(postgres_stat_io_fsyncs{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type) (rate(postgres_stat_io_fsyncs{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "Other",
@@ -7114,7 +7167,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 2049
+            "y": 775
           },
           "id": 120,
           "options": {
@@ -7131,7 +7184,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -7140,7 +7193,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_reuses{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_reuses{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[$interval]))>0",
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
               "range": true,
@@ -7153,7 +7206,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_reuses{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_reuses{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -7167,7 +7220,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_reuses{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_reuses{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -7181,7 +7234,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_reuses{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_reuses{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -7195,7 +7248,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type) (rate(postgres_stat_io_reuses{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type) (rate(postgres_stat_io_reuses{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "Other",
@@ -7267,7 +7320,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 2049
+            "y": 775
           },
           "id": 110,
           "options": {
@@ -7284,7 +7337,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -7293,7 +7346,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_hits{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_hits{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"autovacuum.*\"}[$interval]))>0",
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
               "range": true,
@@ -7306,7 +7359,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_hits{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_hits{instance=\"$instance\",service_id=\"$postgres\",backend_type=~\"background.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -7320,7 +7373,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_hits{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_hits{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"client backend\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{backend_type}}/{{context}}",
@@ -7334,7 +7387,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_hits{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[1m]))>0",
+              "expr": "sum by (backend_type,context) (rate(postgres_stat_io_hits{instance=\"$instance\",service_id=\"$postgres\",backend_type=\"checkpointer\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "{{ backend_type }}/{{ context }}",
@@ -7348,7 +7401,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (backend_type) (rate(postgres_stat_io_hits{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[1m]))>0",
+              "expr": "sum by (backend_type) (rate(postgres_stat_io_hits{instance=\"$instance\",service_id=\"$postgres\",backend_type!~\"checkpointer|client backend.*|background.*|autovacuum.*\"}[$interval]))>0",
               "hide": false,
               "interval": "",
               "legendFormat": "Other",
@@ -7434,7 +7487,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 132
+            "y": 792
           },
           "id": 117,
           "options": {
@@ -7451,7 +7504,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -7460,7 +7513,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (name) (rate(postgres_stat_slru_flushes{instance=\"$instance\",service_id=\"$postgres\"}[1m]))>0",
+              "expr": "sum by (name) (rate(postgres_stat_slru_flushes{instance=\"$instance\",service_id=\"$postgres\"}[$interval]))>0",
               "interval": "",
               "legendFormat": "{{name}}",
               "range": true,
@@ -7531,7 +7584,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 132
+            "y": 792
           },
           "id": 118,
           "options": {
@@ -7548,7 +7601,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -7557,7 +7610,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (name) (rate(postgres_stat_slru_truncates{instance=\"$instance\",service_id=\"$postgres\"}[1m]))>0",
+              "expr": "sum by (name) (rate(postgres_stat_slru_truncates{instance=\"$instance\",service_id=\"$postgres\"}[$interval]))>0",
               "interval": "",
               "legendFormat": "{{name}}",
               "range": true,
@@ -7628,7 +7681,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 140
+            "y": 800
           },
           "id": 112,
           "options": {
@@ -7645,7 +7698,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -7654,7 +7707,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (name) (rate(postgres_stat_slru_blks_hit{instance=\"$instance\",service_id=\"$postgres\"}[1m]))>0",
+              "expr": "sum by (name) (rate(postgres_stat_slru_blks_hit{instance=\"$instance\",service_id=\"$postgres\"}[$interval]))>0",
               "interval": "",
               "legendFormat": "{{name}}",
               "range": true,
@@ -7725,7 +7778,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 140
+            "y": 800
           },
           "id": 113,
           "options": {
@@ -7742,7 +7795,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -7751,7 +7804,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (name) (rate(postgres_stat_slru_blks_exists{instance=\"$instance\",service_id=\"$postgres\"}[1m]))>0",
+              "expr": "sum by (name) (rate(postgres_stat_slru_blks_exists{instance=\"$instance\",service_id=\"$postgres\"}[$interval]))>0",
               "interval": "",
               "legendFormat": "{{name}}",
               "range": true,
@@ -7822,7 +7875,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 148
+            "y": 808
           },
           "id": 114,
           "options": {
@@ -7839,7 +7892,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -7848,7 +7901,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (name) (rate(postgres_stat_slru_blks_read{instance=\"$instance\",service_id=\"$postgres\"}[1m]))>0",
+              "expr": "sum by (name) (rate(postgres_stat_slru_blks_read{instance=\"$instance\",service_id=\"$postgres\"}[$interval]))>0",
               "interval": "",
               "legendFormat": "{{name}}",
               "range": true,
@@ -7919,7 +7972,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 148
+            "y": 808
           },
           "id": 115,
           "options": {
@@ -7936,7 +7989,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -7945,7 +7998,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (name) (rate(postgres_stat_slru_blks_written{instance=\"$instance\",service_id=\"$postgres\"}[1m]))>0",
+              "expr": "sum by (name) (rate(postgres_stat_slru_blks_written{instance=\"$instance\",service_id=\"$postgres\"}[$interval]))>0",
               "interval": "",
               "legendFormat": "{{name}}",
               "range": true,
@@ -8016,7 +8069,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 156
+            "y": 816
           },
           "id": 116,
           "options": {
@@ -8033,7 +8086,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -8042,7 +8095,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "sum by (name) (rate(postgres_stat_slru_blks_zeroed{instance=\"$instance\",service_id=\"$postgres\"}[1m]))>0",
+              "expr": "sum by (name) (rate(postgres_stat_slru_blks_zeroed{instance=\"$instance\",service_id=\"$postgres\"}[$interval]))>0",
               "interval": "",
               "legendFormat": "{{name}}",
               "range": true,
@@ -8128,7 +8181,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 41
+            "y": 825
           },
           "id": 65,
           "options": {
@@ -8145,7 +8198,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -8248,7 +8301,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 41
+            "y": 825
           },
           "id": 66,
           "options": {
@@ -8265,7 +8318,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -8346,7 +8399,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 49
+            "y": 833
           },
           "id": 69,
           "options": {
@@ -8363,7 +8416,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -8444,7 +8497,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 49
+            "y": 833
           },
           "id": 70,
           "options": {
@@ -8461,7 +8514,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -8542,7 +8595,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 57
+            "y": 841
           },
           "id": 67,
           "options": {
@@ -8559,7 +8612,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -8640,7 +8693,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 57
+            "y": 841
           },
           "id": 68,
           "options": {
@@ -8657,7 +8710,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -8738,7 +8791,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 65
+            "y": 849
           },
           "id": 123,
           "options": {
@@ -8755,7 +8808,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -8850,7 +8903,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 214
+            "y": 134
           },
           "id": 57,
           "options": {
@@ -8867,7 +8920,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -8876,7 +8929,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "topk(5, rate(postgres_table_seq_tup_read_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\"}[1m]))",
+              "expr": "topk(5, rate(postgres_table_seq_tup_read_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\"}[$interval]))",
               "interval": "",
               "legendFormat": "{{database}}/{{schema}}.{{table}}",
               "range": true,
@@ -8948,7 +9001,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 214
+            "y": 134
           },
           "id": 60,
           "options": {
@@ -8965,7 +9018,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -8974,7 +9027,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "topk(5, rate(postgres_table_tuples_inserted_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\"}[1m]))",
+              "expr": "topk(5, rate(postgres_table_tuples_inserted_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\"}[$interval]))",
               "interval": "",
               "legendFormat": "{{database}}/{{schema}}.{{table}}",
               "range": true,
@@ -9046,7 +9099,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 222
+            "y": 142
           },
           "id": 89,
           "options": {
@@ -9063,7 +9116,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -9072,7 +9125,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "topk(5, rate(postgres_table_seq_scan_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\"}[1m]))",
+              "expr": "topk(5, rate(postgres_table_seq_scan_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\"}[$interval]))",
               "interval": "",
               "legendFormat": "{{database}}/{{schema}}.{{table}}",
               "range": true,
@@ -9144,7 +9197,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 222
+            "y": 142
           },
           "id": 59,
           "options": {
@@ -9161,7 +9214,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "11.5.0-219443",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -9170,7 +9223,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "topk(5, rate(postgres_table_tuples_updated_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\"}[1m]))",
+              "expr": "topk(5, rate(postgres_table_tuples_updated_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\"}[$interval]))",
               "interval": "",
               "legendFormat": "{{database}}/{{schema}}.{{table}}",
               "range": true,
@@ -9198,6 +9251,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -9241,7 +9295,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 230
+            "y": 150
           },
           "id": 58,
           "options": {
@@ -9252,12 +9306,13 @@
               "showLegend": true
             },
             "tooltip": {
+              "hideZeros": false,
               "maxHeight": 600,
               "mode": "multi",
               "sort": "desc"
             }
           },
-          "pluginVersion": "7.5.7",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -9294,6 +9349,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -9337,7 +9393,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 230
+            "y": 150
           },
           "id": 61,
           "options": {
@@ -9348,12 +9404,13 @@
               "showLegend": true
             },
             "tooltip": {
+              "hideZeros": false,
               "maxHeight": 600,
               "mode": "multi",
               "sort": "desc"
             }
           },
-          "pluginVersion": "7.5.7",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -9362,7 +9419,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "topk(5, rate(postgres_table_tuples_deleted_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\"}[1m]))",
+              "expr": "topk(5, rate(postgres_table_tuples_deleted_total{instance=\"$instance\",service_id=\"$postgres\",database=~\"$database\"}[$interval]))",
               "interval": "",
               "legendFormat": "{{database}}/{{schema}}.{{table}}",
               "range": true,
@@ -9390,6 +9447,7 @@
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
+                "barWidthFactor": 0.6,
                 "drawStyle": "line",
                 "fillOpacity": 10,
                 "gradientMode": "none",
@@ -9433,7 +9491,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 238
+            "y": 158
           },
           "id": 94,
           "options": {
@@ -9444,12 +9502,13 @@
               "showLegend": true
             },
             "tooltip": {
+              "hideZeros": false,
               "maxHeight": 600,
               "mode": "multi",
               "sort": "desc"
             }
           },
-          "pluginVersion": "7.5.7",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -9521,7 +9580,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 238
+            "y": 158
           },
           "id": 93,
           "options": {
@@ -9536,7 +9595,7 @@
             },
             "showHeader": true
           },
-          "pluginVersion": "11.1.0",
+          "pluginVersion": "11.6.0-227265",
           "targets": [
             {
               "datasource": {
@@ -9602,7 +9661,7 @@
     }
   ],
   "refresh": "1m",
-  "schemaVersion": 40,
+  "schemaVersion": 41,
   "tags": [
     "pgSCV"
   ],
@@ -9646,14 +9705,15 @@
           "type": "prometheus",
           "uid": "${DS_VICTORIAMETRICS}"
         },
-        "definition": "label_values(pgscv_services_registered_total{instance=\"$instance\", service=\"postgres\"},service_id)",
+        "definition": "label_values(pgscv_services_registered_total{service=\"postgres\", instance=\"$instance\"},provider)",
+        "description": "",
         "includeAll": false,
-        "label": "PostgreSQL",
-        "name": "postgres",
+        "label": "Provider",
+        "name": "provider",
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(pgscv_services_registered_total{instance=\"$instance\", service=\"postgres\"},service_id)",
+          "query": "label_values(pgscv_services_registered_total{service=\"postgres\", instance=\"$instance\"},provider)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
@@ -9666,7 +9726,27 @@
           "type": "prometheus",
           "uid": "${DS_VICTORIAMETRICS}"
         },
-        "definition": "label_values(postgres_database_size_bytes{instance=\"$instance\"},database)",
+        "definition": "label_values(pgscv_services_registered_total{instance=\"$instance\", service=\"postgres\", provider=\"$provider\"},service_id)",
+        "includeAll": false,
+        "label": "PostgreSQL",
+        "name": "postgres",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(pgscv_services_registered_total{instance=\"$instance\", service=\"postgres\", provider=\"$provider\"},service_id)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_VICTORIAMETRICS}"
+        },
+        "definition": "label_values(postgres_database_size_bytes{instance=\"$instance\", provider=\"$provider\", service_id=\"$postgres\"},database)",
         "includeAll": true,
         "label": "Database",
         "multi": true,
@@ -9674,7 +9754,7 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(postgres_database_size_bytes{instance=\"$instance\"},database)",
+          "query": "label_values(postgres_database_size_bytes{instance=\"$instance\", provider=\"$provider\", service_id=\"$postgres\"},database)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
@@ -9682,33 +9762,95 @@
         "type": "query"
       },
       {
-        "current": {
-          "text": [
-            "pgscv"
-          ],
-          "value": [
-            "pgscv"
-          ]
+        "allValue": "postgres",
+        "allowCustomValue": false,
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_VICTORIAMETRICS}"
         },
-        "description": "Exclude users",
-        "includeAll": false,
+        "definition": "label_values(postgres_statements_calls_total{instance=\"$instance\", provider=\"$provider\", service_id=\"$postgres\"},user)",
+        "includeAll": true,
         "label": "Exclude",
         "multi": true,
         "name": "exclude",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(postgres_statements_calls_total{instance=\"$instance\", provider=\"$provider\", service_id=\"$postgres\"},user)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "auto": true,
+        "auto_count": 200,
+        "auto_min": "1s",
+        "current": {
+          "text": "1m",
+          "value": "1m"
+        },
+        "description": "",
+        "label": "Interval",
+        "name": "interval",
         "options": [
           {
             "selected": false,
-            "text": "postgres",
-            "value": "postgres"
+            "text": "15s",
+            "value": "15s"
+          },
+          {
+            "selected": false,
+            "text": "30s",
+            "value": "30s"
           },
           {
             "selected": true,
-            "text": "pgscv",
-            "value": "pgscv"
+            "text": "1m",
+            "value": "1m"
+          },
+          {
+            "selected": false,
+            "text": "5m",
+            "value": "5m"
+          },
+          {
+            "selected": false,
+            "text": "15m",
+            "value": "15m"
+          },
+          {
+            "selected": false,
+            "text": "1h",
+            "value": "1h"
+          },
+          {
+            "selected": false,
+            "text": "6h",
+            "value": "6h"
+          },
+          {
+            "selected": false,
+            "text": "1d",
+            "value": "1d"
           }
         ],
-        "query": "postgres,pgscv",
-        "type": "custom"
+        "query": "15s,30s,1m,5m,15m,1h,6h,1d",
+        "refresh": 2,
+        "type": "interval"
+      },
+      {
+        "baseFilters": [],
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${ds}"
+        },
+        "filters": [],
+        "name": "Filter",
+        "type": "adhoc"
       }
     ]
   },
@@ -9722,6 +9864,6 @@
   "timezone": "",
   "title": "pgSCV: PostgreSQL",
   "uid": "N6PwjKeGz",
-  "version": 37,
+  "version": 40,
   "weekStart": ""
 }

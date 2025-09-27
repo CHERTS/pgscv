@@ -2,11 +2,12 @@
 package collector
 
 import (
+	"context"
 	"strconv"
+	"sync"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -57,17 +58,19 @@ func NewPostgresLocksCollector(constLabels labels, settings model.CollectorSetti
 }
 
 // Update method collects locks metrics.
-func (c *postgresLocksCollector) Update(config Config, ch chan<- prometheus.Metric) error {
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+func (c *postgresLocksCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
+	conn := config.DB
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	var err error
 
-	// get pg_stat_activity stats
-	res, err := conn.Query(locksQuery)
-	if err != nil {
-		return err
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresLocks, locksQuery)
+	if res == nil {
+		res, err = conn.Query(ctx, locksQuery)
+		if err != nil {
+			return err
+		}
+		saveToCache(collectorPostgresLocks, wg, config.CacheConfig, cacheKey, res)
 	}
 
 	// parse pg_stat_activity stats

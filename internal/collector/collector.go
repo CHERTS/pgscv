@@ -2,15 +2,60 @@
 package collector
 
 import (
-	"maps"
-	"strconv"
-	"sync"
-
+	"context"
 	"github.com/cherts/pgscv/internal/filter"
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 	"github.com/prometheus/client_golang/prometheus"
+	"maps"
+	"strconv"
+	"sync"
+)
+
+const (
+	collectorSystemPgSCV       = "system/pgscv"
+	collectorSystemSysInfo     = "system/sysinfo"
+	collectorSystemLoadAverage = "system/loadaverage"
+	collectorSystemCPU         = "system/cpu"
+	collectorSystemDiskStats   = "system/diskstats"
+	collectorSystemFileSystems = "system/filesystems"
+	collectorSystemNetDev      = "system/netdev"
+	collectorSystemNetwork     = "system/network"
+	collectorSystemMemory      = "system/memory"
+	collectorSystemSysConfig   = "system/sysconfig"
+
+	collectorPostgresPgSCV            = "postgres/pgscv"
+	collectorPostgresActivity         = "postgres/activity"
+	collectorPostgresArchiver         = "postgres/archiver"
+	collectorPostgresBgWriter         = "postgres/bgwriter"
+	collectorPostgresConflicts        = "postgres/conflicts"
+	collectorPostgresDatabases        = "postgres/databases"
+	collectorPostgresIndexes          = "postgres/indexes"
+	collectorPostgresFunctions        = "postgres/functions"
+	collectorPostgresLocks            = "postgres/locks"
+	collectorPostgresLogs             = "postgres/logs"
+	collectorPostgresReplication      = "postgres/replication"
+	collectorPostgresReplicationSlots = "postgres/replication_slots"
+	collectorPostgresStatements       = "postgres/statements"
+	collectorPostgresSchemas          = "postgres/schemas"
+	collectorPostgresSettings         = "postgres/settings"
+	collectorPostgresStorage          = "postgres/storage"
+	collectorPostgresStatIO           = "postgres/stat_io"
+	collectorPostgresStatSLRU         = "postgres/stat_slru"
+	collectorPostgresStatSubscription = "postgres/stat_subscription"
+	collectorPostgresStatSSL          = "postgres/stat_ssl"
+	collectorPostgresTables           = "postgres/tables"
+	collectorPostgresWAL              = "postgres/wal"
+	collectorPostgresCustom           = "postgres/custom"
+
+	collectorPgBouncerPgSCV    = "pgbouncer/pgscv"
+	collectorPgBouncerPools    = "pgbouncer/pools"
+	collectorPgBouncerStats    = "pgbouncer/stats"
+	collectorPgBouncerSettings = "pgbouncer/settings"
+
+	collectorPatroniPgSCV  = "patroni/pgscv"
+	collectorPatroniCommon = "patroni/common"
 )
 
 // Factories defines collector functions which used for collecting metrics.
@@ -24,16 +69,16 @@ func (f Factories) RegisterSystemCollectors(disabled []string) {
 	}
 
 	funcs := map[string]func(labels, model.CollectorSettings) (Collector, error){
-		"system/pgscv":       NewPgscvServicesCollector,
-		"system/sysinfo":     NewSysInfoCollector,
-		"system/loadaverage": NewLoadAverageCollector,
-		"system/cpu":         NewCPUCollector,
-		"system/diskstats":   NewDiskstatsCollector,
-		"system/filesystems": NewFilesystemCollector,
-		"system/netdev":      NewNetdevCollector,
-		"system/network":     NewNetworkCollector,
-		"system/memory":      NewMeminfoCollector,
-		"system/sysconfig":   NewSysconfigCollector,
+		collectorSystemPgSCV:       NewPgscvServicesCollector,
+		collectorSystemSysInfo:     NewSysInfoCollector,
+		collectorSystemLoadAverage: NewLoadAverageCollector,
+		collectorSystemCPU:         NewCPUCollector,
+		collectorSystemDiskStats:   NewDiskstatsCollector,
+		collectorSystemFileSystems: NewFilesystemCollector,
+		collectorSystemNetDev:      NewNetdevCollector,
+		collectorSystemNetwork:     NewNetworkCollector,
+		collectorSystemMemory:      NewMeminfoCollector,
+		collectorSystemSysConfig:   NewSysconfigCollector,
 	}
 
 	for name, fn := range funcs {
@@ -55,29 +100,29 @@ func (f Factories) RegisterPostgresCollectors(disabled []string) {
 	}
 
 	funcs := map[string]func(labels, model.CollectorSettings) (Collector, error){
-		"postgres/pgscv":             NewPgscvServicesCollector,
-		"postgres/activity":          NewPostgresActivityCollector,
-		"postgres/archiver":          NewPostgresWalArchivingCollector,
-		"postgres/bgwriter":          NewPostgresBgwriterCollector,
-		"postgres/conflicts":         NewPostgresConflictsCollector,
-		"postgres/databases":         NewPostgresDatabasesCollector,
-		"postgres/indexes":           NewPostgresIndexesCollector,
-		"postgres/functions":         NewPostgresFunctionsCollector,
-		"postgres/locks":             NewPostgresLocksCollector,
-		"postgres/logs":              NewPostgresLogsCollector,
-		"postgres/replication":       NewPostgresReplicationCollector,
-		"postgres/replication_slots": NewPostgresReplicationSlotsCollector,
-		"postgres/statements":        NewPostgresStatementsCollector,
-		"postgres/schemas":           NewPostgresSchemasCollector,
-		"postgres/settings":          NewPostgresSettingsCollector,
-		"postgres/storage":           NewPostgresStorageCollector,
-		"postgres/stat_io":           NewPostgresStatIOCollector,
-		"postgres/stat_slru":         NewPostgresStatSlruCollector,
-		"postgres/stat_subscription": NewPostgresStatSubscriptionCollector,
-		"postgres/stat_ssl":          NewPostgresStatSslCollector,
-		"postgres/tables":            NewPostgresTablesCollector,
-		"postgres/wal":               NewPostgresWalCollector,
-		"postgres/custom":            NewPostgresCustomCollector,
+		collectorPostgresPgSCV:            NewPgscvServicesCollector,
+		collectorPostgresActivity:         NewPostgresActivityCollector,
+		collectorPostgresArchiver:         NewPostgresWalArchivingCollector,
+		collectorPostgresBgWriter:         NewPostgresBgwriterCollector,
+		collectorPostgresConflicts:        NewPostgresConflictsCollector,
+		collectorPostgresDatabases:        NewPostgresDatabasesCollector,
+		collectorPostgresIndexes:          NewPostgresIndexesCollector,
+		collectorPostgresFunctions:        NewPostgresFunctionsCollector,
+		collectorPostgresLocks:            NewPostgresLocksCollector,
+		collectorPostgresLogs:             NewPostgresLogsCollector,
+		collectorPostgresReplication:      NewPostgresReplicationCollector,
+		collectorPostgresReplicationSlots: NewPostgresReplicationSlotsCollector,
+		collectorPostgresStatements:       NewPostgresStatementsCollector,
+		collectorPostgresSchemas:          NewPostgresSchemasCollector,
+		collectorPostgresSettings:         NewPostgresSettingsCollector,
+		collectorPostgresStorage:          NewPostgresStorageCollector,
+		collectorPostgresStatIO:           NewPostgresStatIOCollector,
+		collectorPostgresStatSLRU:         NewPostgresStatSlruCollector,
+		collectorPostgresStatSubscription: NewPostgresStatSubscriptionCollector,
+		collectorPostgresStatSSL:          NewPostgresStatSslCollector,
+		collectorPostgresTables:           NewPostgresTablesCollector,
+		collectorPostgresWAL:              NewPostgresWalCollector,
+		collectorPostgresCustom:           NewPostgresCustomCollector,
 	}
 
 	for name, fn := range funcs {
@@ -98,10 +143,10 @@ func (f Factories) RegisterPgbouncerCollectors(disabled []string) {
 	}
 
 	funcs := map[string]func(labels, model.CollectorSettings) (Collector, error){
-		"pgbouncer/pgscv":    NewPgscvServicesCollector,
-		"pgbouncer/pools":    NewPgbouncerPoolsCollector,
-		"pgbouncer/stats":    NewPgbouncerStatsCollector,
-		"pgbouncer/settings": NewPgbouncerSettingsCollector,
+		collectorPgBouncerPgSCV:    NewPgscvServicesCollector,
+		collectorPgBouncerPools:    NewPgbouncerPoolsCollector,
+		collectorPgBouncerStats:    NewPgbouncerStatsCollector,
+		collectorPgBouncerSettings: NewPgbouncerSettingsCollector,
 	}
 
 	for name, fn := range funcs {
@@ -123,8 +168,8 @@ func (f Factories) RegisterPatroniCollectors(disabled []string) {
 	}
 
 	funcs := map[string]func(labels, model.CollectorSettings) (Collector, error){
-		"patroni/pgscv":  NewPgscvServicesCollector,
-		"patroni/common": NewPatroniCommonCollector,
+		collectorPatroniPgSCV:  NewPgscvServicesCollector,
+		collectorPatroniCommon: NewPatroniCommonCollector,
 	}
 
 	for name, fn := range funcs {
@@ -146,7 +191,7 @@ func (f Factories) register(collector string, factory func(labels, model.Collect
 // Collector is the interface a collector has to implement.
 type Collector interface {
 	// Update does collecting new metrics and expose them via prometheus registry.
-	Update(config Config, ch chan<- prometheus.Metric) error
+	Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error
 }
 
 // PgscvCollector implements the prometheus.Collector interface.
@@ -234,7 +279,7 @@ func (n PgscvCollector) Collect(out chan<- prometheus.Metric) {
 
 	// Create pipe channel used transmitting metrics from collectors to sender.
 	pipelineIn := make(chan prometheus.Metric)
-
+	ctx := context.Background()
 	// Run collectors.
 	sem := make(chan struct{}, concurrencyLimit)
 	wgCollector.Add(len(n.Collectors))
@@ -245,7 +290,7 @@ func (n PgscvCollector) Collect(out chan<- prometheus.Metric) {
 				<-sem
 				wgCollector.Done()
 			}()
-			collect(name, n.Config, c, pipelineIn)
+			collect(ctx, name, n.Config, c, pipelineIn)
 		}(name, c)
 	}
 
@@ -266,6 +311,7 @@ func (n PgscvCollector) Collect(out chan<- prometheus.Metric) {
 	wgSender.Wait()
 }
 
+// @deprecated
 // send acts like a middleware between metric collector functions which produces metrics and Prometheus who accepts metrics.
 func send(in <-chan prometheus.Metric, out chan<- prometheus.Metric) {
 	for m := range in {
@@ -281,8 +327,8 @@ func send(in <-chan prometheus.Metric, out chan<- prometheus.Metric) {
 }
 
 // collect runs metric collection function and wraps it into instrumenting logic.
-func collect(name string, config Config, c Collector, ch chan<- prometheus.Metric) {
-	err := c.Update(config, ch)
+func collect(ctx context.Context, name string, config Config, c Collector, ch chan<- prometheus.Metric) {
+	err := c.Update(ctx, config, ch)
 	if err != nil {
 		log.Errorf("%s collector failed; %s", name, err)
 	}

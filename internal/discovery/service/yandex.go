@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"github.com/cherts/pgscv/discovery"
 	"maps"
 	"os"
@@ -46,24 +47,18 @@ type YandexConfig struct {
 type engineIdx int
 type version uint64
 
-type subscriber struct {
-	AddService     discovery.AddServiceFunc
-	RemoveService  discovery.RemoveServiceFunc
-	SyncedVersion  map[engineIdx]version
-	syncedServices map[string]discovery.Service
-}
-
 // YandexDiscovery is main struct for Yandex Managed Databases discoverer
 type YandexDiscovery struct {
 	sync.RWMutex
+	id          string
 	config      []YandexConfig
 	engines     []*yandexEngine
 	subscribers map[string]subscriber
 }
 
 // NewYandexDiscovery return pointer initialized YandexDiscovery structure
-func NewYandexDiscovery() *YandexDiscovery {
-	return &YandexDiscovery{subscribers: make(map[string]subscriber)}
+func NewYandexDiscovery(id string) *YandexDiscovery {
+	return &YandexDiscovery{id: id, subscribers: make(map[string]subscriber)}
 }
 
 // Unsubscribe implementation Unsubscribe method of Discovery interface
@@ -94,6 +89,7 @@ func (yd *YandexDiscovery) Subscribe(subscriberID string, addService discovery.A
 			labels := make(map[string]string)
 			labels["mdb_cluster"] = svc.name
 			labels["provider"] = discovery.YandexMDB
+			labels["provider_id"] = yd.id
 			targetLabels := make(map[string]string)
 			if yd.config[engineID].TargetLabels != nil {
 				for _, item := range *yd.config[engineID].TargetLabels {
@@ -115,8 +111,7 @@ func (yd *YandexDiscovery) Subscribe(subscriberID string, addService discovery.A
 	return nil
 }
 
-// Sync implementation Sync method of Discovery interface
-func (yd *YandexDiscovery) Sync() error {
+func (yd *YandexDiscovery) sync() error {
 	yd.Lock()
 	defer yd.Unlock()
 	log.Debug("[Yandex.Cloud SD] Sync...")
@@ -150,6 +145,7 @@ func (yd *YandexDiscovery) Sync() error {
 				labels := make(map[string]string)
 				labels["mdb_cluster"] = engineServices[*v.Left].name
 				labels["provider"] = discovery.YandexMDB
+				labels["provider_id"] = yd.id
 				targetLabels := make(map[string]string)
 				for _, l := range engineServices[*v.Left].labels {
 					targetLabels[l.Name] = l.Value
@@ -178,7 +174,7 @@ func (yd *YandexDiscovery) Sync() error {
 
 // Init implementation Init method of Discovery interface
 func (yd *YandexDiscovery) Init(cfg discovery.Config) error {
-	log.Debug("[Yandex.Cloud SD] Init discovery config...")
+	log.Debug(fmt.Sprintf("[Yandex.Cloud:%s SD] Init discovery config...", yd.id))
 	c, err := ensureConfigYandexMDB(cfg)
 	if err != nil {
 		log.Errorf("[Yandex.Cloud SD] Failed to init discovery config, error: %v", err)
@@ -208,7 +204,7 @@ func (yd *YandexDiscovery) Start(ctx context.Context, errCh chan<- error) error 
 	}
 
 	for {
-		err := yd.Sync()
+		err := yd.sync()
 		if err != nil {
 			log.Errorf("[Yandex.Cloud SD] Failed to sync, error: %s", err.Error())
 			errCh <- err

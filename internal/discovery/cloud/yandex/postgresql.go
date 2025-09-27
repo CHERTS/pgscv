@@ -2,6 +2,7 @@ package yandex
 
 import (
 	"context"
+	"github.com/cherts/pgscv/internal/discovery/filter"
 
 	"github.com/cherts/pgscv/discovery/log"
 	"github.com/yandex-cloud/go-genproto/yandex/cloud/mdb/postgresql/v1"
@@ -36,7 +37,7 @@ type Cluster struct {
 }
 
 // GetPostgreSQLClusters get a filtered list of clusters and their databases from Yandex cloud API
-func (sdk *SDK) GetPostgreSQLClusters(ctx context.Context, folderID string, filter []Filter) ([]Cluster, error) {
+func (sdk *SDK) GetPostgreSQLClusters(ctx context.Context, folderID string, filter []filter.Filter) ([]Cluster, error) {
 	log.Debug("[Yandex.Cloud SD] Init SDK...")
 	yandexSdk, err := sdk.Build(ctx)
 	if err != nil {

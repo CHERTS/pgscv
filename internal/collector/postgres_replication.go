@@ -2,11 +2,12 @@
 package collector
 
 import (
+	"context"
 	"strconv"
+	"sync"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -98,17 +99,20 @@ func NewPostgresReplicationCollector(constLabels labels, settings model.Collecto
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresReplicationCollector) Update(config Config, ch chan<- prometheus.Metric) error {
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+func (c *postgresReplicationCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
+	conn := config.DB
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	var err error
 
-	// Get replication stats.
-	res, err := conn.Query(selectReplicationQuery(config.pgVersion))
-	if err != nil {
-		return err
+	query := selectReplicationQuery(config.pgVersion)
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresReplication, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
+		if err != nil {
+			return err
+		}
+		saveToCache(collectorPostgresReplication, wg, config.CacheConfig, cacheKey, res)
 	}
 
 	// Parse pg_stat_replication stats.

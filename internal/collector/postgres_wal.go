@@ -2,11 +2,12 @@
 package collector
 
 import (
+	"context"
 	"strconv"
+	"sync"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -129,19 +130,20 @@ func NewPostgresWalCollector(constLabels labels, settings model.CollectorSetting
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresWalCollector) Update(config Config, ch chan<- prometheus.Metric) error {
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
+func (c *postgresWalCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
+	conn := config.DB
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	var err error
+	query := selectWalQuery(config.pgVersion.Numeric)
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresWAL, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
+		if err != nil {
+			return err
+		}
+		saveToCache(collectorPostgresWAL, wg, config.CacheConfig, cacheKey, res)
 	}
-	defer conn.Close()
-
-	// Get WAL usage stats.
-	res, err := conn.Query(selectWalQuery(config.pgVersion.Numeric))
-	if err != nil {
-		return err
-	}
-
 	stats := parsePostgresWalStats(res)
 
 	for k, v := range stats {

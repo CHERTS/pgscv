@@ -2,13 +2,13 @@
 package collector
 
 import (
+	"context"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
-	"github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -213,139 +213,114 @@ func NewPostgresTablesCollector(constLabels labels, settings model.CollectorSett
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresTablesCollector) Update(config Config, ch chan<- prometheus.Metric) error {
+func (c *postgresTablesCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
+
+	conn := config.DB
+	var res *model.PGResult
+	var cacheKey string
 	var err error
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
 
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	collect := func(conn *store.DB) error {
-		var res *model.PGResult
-		if config.CollectTopTable > 0 {
-			res, err = conn.Query(userTablesQueryTopK, config.CollectTopTable)
-		} else {
-			res, err = conn.Query(userTablesQuery)
+	if config.CollectTopTable > 0 {
+		cacheKey, res, _ = getFromCache(config.CacheConfig, config.ConnString, collectorPostgresTables, userTablesQueryTopK, config.CollectTopTable)
+		if res == nil {
+			res, err = conn.Query(ctx, userTablesQueryTopK, config.CollectTopTable)
+			if err != nil {
+				log.Warnf("get pg_stat_ssl failed: %s; skip", err)
+				return err
+			}
+			saveToCache(collectorPostgresTables, wg, config.CacheConfig, cacheKey, res)
 		}
-		if err != nil {
-			log.Warnf("get tables stat failed: %s; skip", err)
-			return err
-		}
-
-		stats := parsePostgresTableStats(res, c.labelNames)
-
-		for _, stat := range stats {
-			// scan stats
-			ch <- c.seqscan.newConstMetric(stat.seqscan, stat.database, stat.schema, stat.table)
-			ch <- c.seqtupread.newConstMetric(stat.seqtupread, stat.database, stat.schema, stat.table)
-			ch <- c.idxscan.newConstMetric(stat.idxscan, stat.database, stat.schema, stat.table)
-			ch <- c.idxtupfetch.newConstMetric(stat.idxtupfetch, stat.database, stat.schema, stat.table)
-
-			// tuples stats
-			ch <- c.tupInserted.newConstMetric(stat.inserted, stat.database, stat.schema, stat.table)
-			ch <- c.tupUpdated.newConstMetric(stat.updated, stat.database, stat.schema, stat.table)
-			ch <- c.tupDeleted.newConstMetric(stat.deleted, stat.database, stat.schema, stat.table)
-			ch <- c.tupHotUpdated.newConstMetric(stat.hotUpdated, stat.database, stat.schema, stat.table)
-
-			// tuples total stats
-			ch <- c.tupLive.newConstMetric(stat.live, stat.database, stat.schema, stat.table)
-			ch <- c.tupDead.newConstMetric(stat.dead, stat.database, stat.schema, stat.table)
-			ch <- c.tupModified.newConstMetric(stat.modified, stat.database, stat.schema, stat.table)
-
-			// maintenance stats -- avoid metrics spam produced by inactive tables, don't send metrics if counters are zero.
-			if stat.lastvacuumAge > 0 {
-				ch <- c.maintLastVacuumAge.newConstMetric(stat.lastvacuumAge, stat.database, stat.schema, stat.table)
+	} else {
+		cacheKey, res, _ = getFromCache(config.CacheConfig, config.ConnString, collectorPostgresTables, userTablesQuery)
+		if res == nil {
+			res, err = conn.Query(ctx, userTablesQuery)
+			if err != nil {
+				log.Warnf("get pg_stat_ssl failed: %s; skip", err)
+				return err
 			}
-			if stat.lastanalyzeAge > 0 {
-				ch <- c.maintLastAnalyzeAge.newConstMetric(stat.lastanalyzeAge, stat.database, stat.schema, stat.table)
-			}
-			if stat.lastvacuumTime > 0 {
-				ch <- c.maintLastVacuumTime.newConstMetric(stat.lastvacuumTime, stat.database, stat.schema, stat.table)
-			}
-			if stat.lastanalyzeTime > 0 {
-				ch <- c.maintLastAnalyzeTime.newConstMetric(stat.lastanalyzeTime, stat.database, stat.schema, stat.table)
-			}
-			if stat.vacuum > 0 {
-				ch <- c.maintenance.newConstMetric(stat.vacuum, stat.database, stat.schema, stat.table, "vacuum")
-			}
-			if stat.autovacuum > 0 {
-				ch <- c.maintenance.newConstMetric(stat.autovacuum, stat.database, stat.schema, stat.table, "autovacuum")
-			}
-			if stat.analyze > 0 {
-				ch <- c.maintenance.newConstMetric(stat.analyze, stat.database, stat.schema, stat.table, "analyze")
-			}
-			if stat.autoanalyze > 0 {
-				ch <- c.maintenance.newConstMetric(stat.autoanalyze, stat.database, stat.schema, stat.table, "autoanalyze")
-			}
-
-			// io stats -- avoid metrics spam produced by inactive tables, don't send metrics if counters are zero.
-			if stat.heapread > 0 {
-				ch <- c.io.newConstMetric(stat.heapread, stat.database, stat.schema, stat.table, "heap", "read")
-			}
-			if stat.heaphit > 0 {
-				ch <- c.io.newConstMetric(stat.heaphit, stat.database, stat.schema, stat.table, "heap", "hit")
-			}
-			if stat.idxread > 0 {
-				ch <- c.io.newConstMetric(stat.idxread, stat.database, stat.schema, stat.table, "idx", "read")
-			}
-			if stat.idxhit > 0 {
-				ch <- c.io.newConstMetric(stat.idxhit, stat.database, stat.schema, stat.table, "idx", "hit")
-			}
-			if stat.toastread > 0 {
-				ch <- c.io.newConstMetric(stat.toastread, stat.database, stat.schema, stat.table, "toast", "read")
-			}
-			if stat.toasthit > 0 {
-				ch <- c.io.newConstMetric(stat.toasthit, stat.database, stat.schema, stat.table, "toast", "hit")
-			}
-			if stat.tidxread > 0 {
-				ch <- c.io.newConstMetric(stat.tidxread, stat.database, stat.schema, stat.table, "tidx", "read")
-			}
-			if stat.tidxhit > 0 {
-				ch <- c.io.newConstMetric(stat.tidxhit, stat.database, stat.schema, stat.table, "tidx", "hit")
-			}
-
-			ch <- c.sizes.newConstMetric(stat.sizebytes, stat.database, stat.schema, stat.table)
-			ch <- c.reltuples.newConstMetric(stat.reltuples, stat.database, stat.schema, stat.table)
-		}
-		return nil
-	}
-
-	if config.DatabasesRE == nil { // service discovery case
-		err := collect(conn)
-		return err
-	}
-
-	databases, err := listDatabases(conn)
-	if err != nil {
-		return err
-	}
-
-	pgconfig, err := pgx.ParseConfig(config.ConnString)
-	if err != nil {
-		return err
-	}
-
-	for _, d := range databases {
-		// Skip database if not matched to allowed.
-		if !config.DatabasesRE.MatchString(d) {
-			continue
-		}
-
-		pgconfig.Database = d
-		conn, err := store.NewWithConfig(pgconfig)
-		if err != nil {
-			return err
-		}
-		defer conn.Close()
-		err = collect(conn)
-		if err != nil {
-			return err
+			saveToCache(collectorPostgresTables, wg, config.CacheConfig, cacheKey, res)
 		}
 	}
 
+	stats := parsePostgresTableStats(res, c.labelNames)
+
+	for _, stat := range stats {
+		// scan stats
+		ch <- c.seqscan.newConstMetric(stat.seqscan, stat.database, stat.schema, stat.table)
+		ch <- c.seqtupread.newConstMetric(stat.seqtupread, stat.database, stat.schema, stat.table)
+		ch <- c.idxscan.newConstMetric(stat.idxscan, stat.database, stat.schema, stat.table)
+		ch <- c.idxtupfetch.newConstMetric(stat.idxtupfetch, stat.database, stat.schema, stat.table)
+
+		// tuples stats
+		ch <- c.tupInserted.newConstMetric(stat.inserted, stat.database, stat.schema, stat.table)
+		ch <- c.tupUpdated.newConstMetric(stat.updated, stat.database, stat.schema, stat.table)
+		ch <- c.tupDeleted.newConstMetric(stat.deleted, stat.database, stat.schema, stat.table)
+		ch <- c.tupHotUpdated.newConstMetric(stat.hotUpdated, stat.database, stat.schema, stat.table)
+
+		// tuples total stats
+		ch <- c.tupLive.newConstMetric(stat.live, stat.database, stat.schema, stat.table)
+		ch <- c.tupDead.newConstMetric(stat.dead, stat.database, stat.schema, stat.table)
+		ch <- c.tupModified.newConstMetric(stat.modified, stat.database, stat.schema, stat.table)
+
+		// maintenance stats -- avoid metrics spam produced by inactive tables, don't send metrics if counters are zero.
+		if stat.lastvacuumAge > 0 {
+			ch <- c.maintLastVacuumAge.newConstMetric(stat.lastvacuumAge, stat.database, stat.schema, stat.table)
+		}
+		if stat.lastanalyzeAge > 0 {
+			ch <- c.maintLastAnalyzeAge.newConstMetric(stat.lastanalyzeAge, stat.database, stat.schema, stat.table)
+		}
+		if stat.lastvacuumTime > 0 {
+			ch <- c.maintLastVacuumTime.newConstMetric(stat.lastvacuumTime, stat.database, stat.schema, stat.table)
+		}
+		if stat.lastanalyzeTime > 0 {
+			ch <- c.maintLastAnalyzeTime.newConstMetric(stat.lastanalyzeTime, stat.database, stat.schema, stat.table)
+		}
+		if stat.vacuum > 0 {
+			ch <- c.maintenance.newConstMetric(stat.vacuum, stat.database, stat.schema, stat.table, "vacuum")
+		}
+		if stat.autovacuum > 0 {
+			ch <- c.maintenance.newConstMetric(stat.autovacuum, stat.database, stat.schema, stat.table, "autovacuum")
+		}
+		if stat.analyze > 0 {
+			ch <- c.maintenance.newConstMetric(stat.analyze, stat.database, stat.schema, stat.table, "analyze")
+		}
+		if stat.autoanalyze > 0 {
+			ch <- c.maintenance.newConstMetric(stat.autoanalyze, stat.database, stat.schema, stat.table, "autoanalyze")
+		}
+
+		// io stats -- avoid metrics spam produced by inactive tables, don't send metrics if counters are zero.
+		if stat.heapread > 0 {
+			ch <- c.io.newConstMetric(stat.heapread, stat.database, stat.schema, stat.table, "heap", "read")
+		}
+		if stat.heaphit > 0 {
+			ch <- c.io.newConstMetric(stat.heaphit, stat.database, stat.schema, stat.table, "heap", "hit")
+		}
+		if stat.idxread > 0 {
+			ch <- c.io.newConstMetric(stat.idxread, stat.database, stat.schema, stat.table, "idx", "read")
+		}
+		if stat.idxhit > 0 {
+			ch <- c.io.newConstMetric(stat.idxhit, stat.database, stat.schema, stat.table, "idx", "hit")
+		}
+		if stat.toastread > 0 {
+			ch <- c.io.newConstMetric(stat.toastread, stat.database, stat.schema, stat.table, "toast", "read")
+		}
+		if stat.toasthit > 0 {
+			ch <- c.io.newConstMetric(stat.toasthit, stat.database, stat.schema, stat.table, "toast", "hit")
+		}
+		if stat.tidxread > 0 {
+			ch <- c.io.newConstMetric(stat.tidxread, stat.database, stat.schema, stat.table, "tidx", "read")
+		}
+		if stat.tidxhit > 0 {
+			ch <- c.io.newConstMetric(stat.tidxhit, stat.database, stat.schema, stat.table, "tidx", "hit")
+		}
+
+		ch <- c.sizes.newConstMetric(stat.sizebytes, stat.database, stat.schema, stat.table)
+		ch <- c.reltuples.newConstMetric(stat.reltuples, stat.database, stat.schema, stat.table)
+	}
 	return nil
+
 }
 
 // postgresTableStat is per-table store for metrics related to how tables are accessed.

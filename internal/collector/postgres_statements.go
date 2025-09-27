@@ -2,15 +2,14 @@
 package collector
 
 import (
+	"context"
 	"fmt"
-	"strconv"
-	"strings"
-
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
-	"github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
+	"strconv"
+	"strings"
+	"sync"
 )
 
 const (
@@ -319,40 +318,41 @@ func NewPostgresStatementsCollector(constLabels labels, settings model.Collector
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresStatementsCollector) Update(config Config, ch chan<- prometheus.Metric) error {
-	var err error
+func (c *postgresStatementsCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
 	// nothing to do, pg_stat_statements not found in shared_preload_libraries
 	if !config.pgStatStatements {
 		return nil
 	}
 
-	// pg_stat_statements could be installed in any database. The database with
-	// installed pg_stat_statements is discovered during initial config and stored
-	// in configuration. Create the new connection config using default connection
-	// string, but replace database with installed pg_stat_statements.
-
-	pgconfig, err := pgx.ParseConfig(config.ConnString)
-	if err != nil {
-		return err
-	}
-
-	pgconfig.Database = config.pgStatStatementsDatabase
-
-	conn, err := store.NewWithConfig(pgconfig)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+	var err error
+	conn := config.DB
 
 	var res *model.PGResult
+	var cacheKey string
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+
 	// get pg_stat_statements stats
 	if config.CollectTopQuery > 0 {
-		res, err = conn.Query(selectStatementsQuery(config.pgVersion.Numeric, config.pgStatStatementsSchema, config.NoTrackMode, config.CollectTopQuery), config.CollectTopQuery)
+		query := selectStatementsQuery(config.pgVersion.Numeric, config.pgStatStatementsSchema, config.NoTrackMode, config.CollectTopQuery)
+		cacheKey, res, _ = getFromCache(config.CacheConfig, config.ConnString, collectorPostgresStatements, query, config.CollectTopQuery)
+		if res == nil {
+			res, err = conn.Query(ctx, query, config.CollectTopQuery)
+			if err != nil {
+				return err
+			}
+			saveToCache(collectorPostgresStatements, wg, config.CacheConfig, cacheKey, res)
+		}
 	} else {
-		res, err = conn.Query(selectStatementsQuery(config.pgVersion.Numeric, config.pgStatStatementsSchema, config.NoTrackMode, config.CollectTopQuery))
-	}
-	if err != nil {
-		return err
+		query := selectStatementsQuery(config.pgVersion.Numeric, config.pgStatStatementsSchema, config.NoTrackMode, config.CollectTopQuery)
+		cacheKey, res, _ = getFromCache(config.CacheConfig, config.ConnString, collectorPostgresStatements, query)
+		if res == nil {
+			res, err = conn.Query(ctx, query)
+			if err != nil {
+				return err
+			}
+			saveToCache(collectorPostgresStatements, wg, config.CacheConfig, cacheKey, res)
+		}
 	}
 
 	// parse pg_stat_statements stats
@@ -372,7 +372,6 @@ func (c *postgresStatementsCollector) Update(config Config, ch chan<- prometheus
 		// Remember that when creating metrics.
 
 		ch <- c.query.newConstMetric(1, stat.user, stat.database, stat.queryid, query)
-
 		ch <- c.calls.newConstMetric(stat.calls, stat.user, stat.database, stat.queryid)
 		ch <- c.rows.newConstMetric(stat.rows, stat.user, stat.database, stat.queryid)
 

@@ -2,8 +2,8 @@ package collector
 
 import (
 	"database/sql"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/cherts/pgscv/internal/model"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -35,9 +35,9 @@ func Test_parsePostgresWalArchivingStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 4,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("archived_count")}, {Name: []byte("failed_count")},
-					{Name: []byte("since_last_archive_seconds")}, {Name: []byte("lag_files")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "archived_count"}, {Name: "failed_count"},
+					{Name: "since_last_archive_seconds"}, {Name: "lag_files"},
 				},
 				Rows: [][]sql.NullString{
 					{
@@ -53,9 +53,9 @@ func Test_parsePostgresWalArchivingStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 0,
 				Ncols: 5,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("archived_count")}, {Name: []byte("failed_count")},
-					{Name: []byte("since_last_archive_seconds")}, {Name: []byte("lag_bytes")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "archived_count"}, {Name: "failed_count"},
+					{Name: "since_last_archive_seconds"}, {Name: "lag_bytes"},
 				},
 				Rows: [][]sql.NullString{},
 			},

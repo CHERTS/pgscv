@@ -1,8 +1,10 @@
 package collector
 
 import (
+	"context"
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
+	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"regexp"
@@ -39,9 +41,7 @@ func pipeline(t *testing.T, input pipelineInput) {
 	var config Config
 	switch input.service {
 	case model.ServiceTypePostgresql:
-		config.DatabasesRE, err = regexp.Compile(".+")
-		assert.NoError(t, err)
-		config.ConnString = "postgres://pgscv@127.0.0.1/postgres"
+		config.ConnString = "postgres://pgscv@127.0.0.1/pgscv_fixtures"
 		cfg, err := newPostgresServiceConfig(config.ConnString, 0)
 		assert.NoError(t, err)
 		config.postgresServiceConfig = cfg
@@ -49,8 +49,12 @@ func pipeline(t *testing.T, input pipelineInput) {
 		config.ConnString = "postgres://pgscv:pgscv@127.0.0.1:6432/pgbouncer"
 	}
 
+	db, err := store.New(config.ConnString, 20)
+	assert.NoError(t, err)
+	config.DB = db
+
 	go func() {
-		err := collector.Update(config, ch)
+		err := collector.Update(context.Background(), config, ch)
 		assert.NoError(t, err)
 		close(ch)
 	}()

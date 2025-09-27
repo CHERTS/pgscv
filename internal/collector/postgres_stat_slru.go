@@ -1,12 +1,13 @@
 package collector
 
 import (
+	"context"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -80,36 +81,37 @@ func NewPostgresStatSlruCollector(constLabels labels, settings model.CollectorSe
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresStatSlruCollector) Update(config Config, ch chan<- prometheus.Metric) error {
+func (c *postgresStatSlruCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
 	if config.pgVersion.Numeric < PostgresV13 {
 		log.Debugln("[postgres stat_slru collector]: pg_stat_slru view are not available, required Postgres 13 or newer")
 		return nil
 	}
 
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+	conn := config.DB
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	var err error
 
-	// Collecting pg_stat_slru since Postgres 13.
-	if config.pgVersion.Numeric >= PostgresV13 {
-		res, err := conn.Query(postgresStatSlruQuery)
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresStatSLRU, postgresStatSlruQuery)
+	if res == nil {
+		res, err = conn.Query(ctx, postgresStatSlruQuery)
 		if err != nil {
 			log.Warnf("get pg_stat_slru failed: %s; skip", err)
-		} else {
-			stats := parsePostgresStatSlru(res, c.labelNames)
-
-			for _, stat := range stats {
-				ch <- c.blksZeroed.newConstMetric(stat.BlksZeroed, stat.SlruName)
-				ch <- c.blksHit.newConstMetric(stat.BlksHit, stat.SlruName)
-				ch <- c.blksRead.newConstMetric(stat.BlksRead, stat.SlruName)
-				ch <- c.blksWritten.newConstMetric(stat.BlksWritten, stat.SlruName)
-				ch <- c.blksExists.newConstMetric(stat.BlksExists, stat.SlruName)
-				ch <- c.flushes.newConstMetric(stat.Flushes, stat.SlruName)
-				ch <- c.truncates.newConstMetric(stat.Truncates, stat.SlruName)
-			}
+			return err
 		}
+		saveToCache(collectorPostgresStatSLRU, wg, config.CacheConfig, cacheKey, res)
+	}
+
+	stats := parsePostgresStatSlru(res, c.labelNames)
+
+	for _, stat := range stats {
+		ch <- c.blksZeroed.newConstMetric(stat.BlksZeroed, stat.SlruName)
+		ch <- c.blksHit.newConstMetric(stat.BlksHit, stat.SlruName)
+		ch <- c.blksRead.newConstMetric(stat.BlksRead, stat.SlruName)
+		ch <- c.blksWritten.newConstMetric(stat.BlksWritten, stat.SlruName)
+		ch <- c.blksExists.newConstMetric(stat.BlksExists, stat.SlruName)
+		ch <- c.flushes.newConstMetric(stat.Flushes, stat.SlruName)
+		ch <- c.truncates.newConstMetric(stat.Truncates, stat.SlruName)
 	}
 
 	return nil

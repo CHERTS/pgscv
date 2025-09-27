@@ -2,15 +2,14 @@
 package collector
 
 import (
-	"strings"
-
-	"github.com/jackc/pgx/v4"
-
+	"fmt"
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
+	"strconv"
+	"strings"
+	"sync"
 )
 
 // postgresSchemaCollector defines metric descriptors and stats store.
@@ -74,85 +73,49 @@ func NewPostgresSchemasCollector(constLabels labels, settings model.CollectorSet
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresSchemaCollector) Update(config Config, ch chan<- prometheus.Metric) error {
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+func (c *postgresSchemaCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
 
-	collect := func(conn *store.DB) {
-		// 1. get system catalog size in bytes.
-		collectSystemCatalogSize(conn, ch, c.syscatalog)
+	// 1. get system catalog size in bytes.
+	collectSystemCatalogSize(ctx, config, ch, wg, c.syscatalog)
 
-		// 2. collect metrics related to tables with no primary/unique key constraints.
-		collectSchemaNonPKTables(conn, ch, c.nonpktables)
+	// 2. collect metrics related to tables with no primary/unique key constraints.
+	collectSchemaNonPKTables(ctx, config, ch, wg, c.nonpktables)
 
-		// Functions below uses queries with casting to regnamespace data type, which is introduced in Postgres 9.5.
-		if config.pgVersion.Numeric < PostgresV95 {
-			log.Debugln("[postgres schema collector]: some system data types are not available, required Postgres 9.5 or newer")
-			return
-		}
-
-		// 3. collect metrics related to invalid indexes.
-		collectSchemaInvalidIndexes(conn, ch, c.invalididx)
-
-		// 4. collect metrics related to non indexed foreign key constraints.
-		collectSchemaNonIndexedFK(conn, ch, c.nonidxfkey)
-
-		// 5. collect metric related to redundant indexes.
-		collectSchemaRedundantIndexes(conn, ch, c.redundantidx)
-
-		// 6. collect metrics related to foreign key constraints with different data types.
-		collectSchemaFKDatatypeMismatch(conn, ch, c.difftypefkey)
-
-		// Function below uses queries pg_sequences which is introduced in Postgres 10.
-		if config.pgVersion.Numeric < PostgresV10 {
-			log.Debugln("[postgres schema collector]: some system views are not available, required Postgres 10 or newer")
-		} else {
-			// 7. collect metrics related to sequences (available since Postgres 10).
-			collectSchemaSequences(conn, ch, c.sequences)
-		}
-	}
-
-	if config.DatabasesRE == nil {
-		// service discovery case
-		collect(conn)
+	// Functions below uses queries with casting to regnamespace data type, which is introduced in Postgres 9.5.
+	if config.pgVersion.Numeric < PostgresV95 {
+		log.Debugln("[postgres schema collector]: some system data types are not available, required Postgres 9.5 or newer")
 		return nil
 	}
 
-	databases, err := listDatabases(conn)
-	if err != nil {
-		return err
-	}
+	// 3. collect metrics related to invalid indexes.
+	collectSchemaInvalidIndexes(ctx, config, ch, wg, c.invalididx)
 
-	pgconfig, err := pgx.ParseConfig(config.ConnString)
-	if err != nil {
-		return err
-	}
+	// 4. collect metrics related to non indexed foreign key constraints.
+	collectSchemaNonIndexedFK(ctx, config, ch, wg, c.nonidxfkey)
 
-	// walk through all databases, connect to it and collect schema-specific stats
-	for _, d := range databases {
-		// Skip database if not matched to allowed.
-		if !config.DatabasesRE.MatchString(d) {
-			continue
-		}
-		pgconfig.Database = d
-		conn, err := store.NewWithConfig(pgconfig)
-		if err != nil {
-			return err
-		}
-		defer conn.Close()
-		collect(conn)
-	}
+	// 5. collect metric related to redundant indexes.
+	collectSchemaRedundantIndexes(ctx, config, ch, wg, c.redundantidx)
 
+	// 6. collect metrics related to foreign key constraints with different data types.
+	collectSchemaFKDatatypeMismatch(ctx, config, ch, wg, c.difftypefkey)
+
+	// Function below uses queries pg_sequences which is introduced in Postgres 10.
+	if config.pgVersion.Numeric < PostgresV10 {
+		log.Debugln("[postgres schema collector]: some system views are not available, required Postgres 10 or newer")
+	} else {
+		// 7. collect metrics related to sequences (available since Postgres 10).
+		collectSchemaSequences(ctx, config, ch, wg, c.sequences)
+	}
 	return nil
 }
 
 // collectSystemCatalogSize collects system catalog size metrics.
-func collectSystemCatalogSize(conn *store.DB, ch chan<- prometheus.Metric, desc typedDesc) {
-	datname := conn.Conn().Config().Database
-	size, err := getSystemCatalogSize(conn)
+func collectSystemCatalogSize(ctx context.Context, config Config, ch chan<- prometheus.Metric, wg *sync.WaitGroup, desc typedDesc) {
+	conn := config.DB
+	datname := conn.Conn().Config().ConnConfig.Database
+	size, err := getSystemCatalogSize(ctx, config, wg)
 	if err != nil {
 		log.Errorf("get system catalog size of database %s failed: %s; skip", datname, err)
 		return
@@ -164,19 +127,35 @@ func collectSystemCatalogSize(conn *store.DB, ch chan<- prometheus.Metric, desc 
 }
 
 // getSystemCatalogSize returns size of system catalog in bytes.
-func getSystemCatalogSize(conn *store.DB) (float64, error) {
+func getSystemCatalogSize(ctx context.Context, config Config, wg *sync.WaitGroup) (float64, error) {
+	conn := config.DB
 	var query = `SELECT sum(pg_total_relation_size(relname::regclass)) AS bytes FROM pg_stat_sys_tables WHERE schemaname = 'pg_catalog'`
-	var size int64
-	if err := conn.Conn().QueryRow(context.Background(), query).Scan(&size); err != nil {
+	var err error
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresSchemas, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
+		if err != nil {
+			return 0, err
+		}
+		saveToCache(collectorPostgresSchemas, wg, config.CacheConfig, cacheKey, res)
+	}
+	rows := res.Rows
+	if len(rows) == 0 {
+		return 0, fmt.Errorf("error get system catalog size")
+	}
+	row := rows[0]
+	size, err := strconv.ParseFloat(row[0].String, 64)
+	if err != nil {
 		return 0, err
 	}
-	return float64(size), nil
+	return size, nil
 }
 
 // collectSchemaNonPKTables collects metrics related to non-PK tables.
-func collectSchemaNonPKTables(conn *store.DB, ch chan<- prometheus.Metric, desc typedDesc) {
-	datname := conn.Conn().Config().Database
-	tables, err := getSchemaNonPKTables(conn)
+func collectSchemaNonPKTables(ctx context.Context, config Config, ch chan<- prometheus.Metric, wg *sync.WaitGroup, desc typedDesc) {
+	conn := config.DB
+	datname := conn.Conn().Config().ConnConfig.Database
+	tables, err := getSchemaNonPKTables(ctx, config, wg)
 	if err != nil {
 		log.Errorf("collect non-pk tables in database %s failed: %s; skip", datname, err)
 		return
@@ -194,40 +173,40 @@ func collectSchemaNonPKTables(conn *store.DB, ch chan<- prometheus.Metric, desc 
 }
 
 // getSchemaNonPKTables searches tables with no PRIMARY or UNIQUE keys in the database and return its names.
-func getSchemaNonPKTables(conn *store.DB) ([]string, error) {
+func getSchemaNonPKTables(ctx context.Context, config Config, wg *sync.WaitGroup) ([]string, error) {
+	conn := config.DB
 	var query = "SELECT n.nspname AS schema, c.relname AS table " +
 		"FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid " +
 		"WHERE NOT EXISTS (SELECT 1 FROM pg_index i WHERE c.oid = i.indrelid AND (i.indisprimary OR i.indisunique)) " +
 		"AND c.relkind = 'r' AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')"
-
-	rows, err := conn.Conn().Query(context.Background(), query)
-	if err != nil {
-		return nil, err
+	var err error
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresSchemas, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+		saveToCache(collectorPostgresSchemas, wg, config.CacheConfig, cacheKey, res)
 	}
+	rows := res.Rows
 
 	var tables = []string{}
 	var schemaname, relname, tableFQName string
 
-	for rows.Next() {
-		err := rows.Scan(&schemaname, &relname)
-		if err != nil {
-			log.Errorf("row scan failed when collecting non-pk tables: %s; skip", err)
-			continue
-		}
-
+	for _, row := range rows {
+		schemaname = row[0].String
+		relname = row[1].String
 		tableFQName = schemaname + "/" + relname
 		tables = append(tables, tableFQName)
 	}
-
-	rows.Close()
 
 	return tables, nil
 }
 
 // collectSchemaInvalidIndexes collects metrics related to invalid indexes.
-func collectSchemaInvalidIndexes(conn *store.DB, ch chan<- prometheus.Metric, desc typedDesc) {
-	database := conn.Conn().Config().Database
-	stats, err := getSchemaInvalidIndexes(conn)
+func collectSchemaInvalidIndexes(ctx context.Context, config Config, ch chan<- prometheus.Metric, wg *sync.WaitGroup, desc typedDesc) {
+	database := config.DB.Conn().Config().ConnConfig.Database
+	stats, err := getSchemaInvalidIndexes(ctx, config, wg)
 	if err != nil {
 		log.Errorf("get invalid indexes stats of database %s failed: %s; skip", database, err)
 		return
@@ -251,22 +230,27 @@ func collectSchemaInvalidIndexes(conn *store.DB, ch chan<- prometheus.Metric, de
 }
 
 // getSchemaInvalidIndexes searches invalid indexes in the database and return its names if such indexes have been found.
-func getSchemaInvalidIndexes(conn *store.DB) (map[string]postgresGenericStat, error) {
+func getSchemaInvalidIndexes(ctx context.Context, config Config, wg *sync.WaitGroup) (map[string]postgresGenericStat, error) {
+	conn := config.DB
 	var query = "SELECT c1.relnamespace::regnamespace::text AS schema, c2.relname AS table, c1.relname AS index, " +
 		"pg_relation_size(i.indexrelid) AS bytes " +
 		"FROM pg_index i JOIN pg_class c1 ON i.indexrelid = c1.oid JOIN pg_class c2 ON i.indrelid = c2.oid WHERE NOT i.indisvalid"
-	res, err := conn.Query(query)
-	if err != nil {
-		return nil, err
+	var err error
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresSchemas, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+		saveToCache(collectorPostgresSchemas, wg, config.CacheConfig, cacheKey, res)
 	}
-
 	return parsePostgresGenericStats(res, []string{"schema", "table", "index"}), nil
 }
 
 // collectSchemaNonIndexedFK collects metrics related to non indexed foreign key constraints.
-func collectSchemaNonIndexedFK(conn *store.DB, ch chan<- prometheus.Metric, desc typedDesc) {
-	database := conn.Conn().Config().Database
-	stats, err := getSchemaNonIndexedFK(conn)
+func collectSchemaNonIndexedFK(ctx context.Context, config Config, ch chan<- prometheus.Metric, wg *sync.WaitGroup, desc typedDesc) {
+	database := config.DB.Conn().Config().ConnConfig.Database
+	stats, err := getSchemaNonIndexedFK(ctx, config, wg)
 	if err != nil {
 		log.Errorf("get non-indexed fkeys stats of database %s failed: %s; skip", database, err)
 		return
@@ -291,7 +275,9 @@ func collectSchemaNonIndexedFK(conn *store.DB, ch chan<- prometheus.Metric, desc
 }
 
 // getSchemaNonIndexedFK searches non indexes foreign key constraints and return its names.
-func getSchemaNonIndexedFK(conn *store.DB) (map[string]postgresGenericStat, error) {
+func getSchemaNonIndexedFK(ctx context.Context, config Config, wg *sync.WaitGroup) (map[string]postgresGenericStat, error) {
+	conn := config.DB
+	var err error
 	var query = "SELECT c.connamespace::regnamespace::text AS schema, s.relname AS table, " +
 		"string_agg(a.attname, ',' ORDER BY x.n) AS columns, c.conname AS constraint, " +
 		"c.confrelid::regclass::text AS referenced " +
@@ -301,19 +287,21 @@ func getSchemaNonIndexedFK(conn *store.DB) (map[string]postgresGenericStat, erro
 		"WHERE NOT EXISTS (SELECT 1 FROM pg_index i WHERE i.indrelid = c.conrelid AND (i.indkey::integer[])[0:cardinality(c.conkey)-1] @> c.conkey::integer[]) " +
 		"AND c.contype = 'f' " +
 		"GROUP BY c.connamespace,s.relname,c.conname,c.confrelid"
-
-	res, err := conn.Query(query)
-	if err != nil {
-		return nil, err
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresSchemas, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+		saveToCache(collectorPostgresSchemas, wg, config.CacheConfig, cacheKey, res)
 	}
-
 	return parsePostgresGenericStats(res, []string{"schema", "table", "columns", "constraint", "referenced"}), nil
 }
 
 // collectSchemaRedundantIndexes collects metrics related to invalid indexes
-func collectSchemaRedundantIndexes(conn *store.DB, ch chan<- prometheus.Metric, desc typedDesc) {
-	database := conn.Conn().Config().Database
-	stats, err := getSchemaRedundantIndexes(conn)
+func collectSchemaRedundantIndexes(ctx context.Context, config Config, ch chan<- prometheus.Metric, wg *sync.WaitGroup, desc typedDesc) {
+	database := config.DB.Conn().Config().ConnConfig.Database
+	stats, err := getSchemaRedundantIndexes(ctx, config, wg)
 	if err != nil {
 		log.Errorf("get redundant indexes stats of database %s failed: %s; skip", database, err)
 		return
@@ -339,7 +327,7 @@ func collectSchemaRedundantIndexes(conn *store.DB, ch chan<- prometheus.Metric, 
 }
 
 // getSchemaRedundantIndexes searches redundant indexes and returns its sizes
-func getSchemaRedundantIndexes(conn *store.DB) (map[string]postgresGenericStat, error) {
+func getSchemaRedundantIndexes(ctx context.Context, config Config, wg *sync.WaitGroup) (map[string]postgresGenericStat, error) {
 	var query = "WITH index_data AS (SELECT *, string_to_array(indkey::text,' ') AS key_array, array_length(string_to_array(indkey::text,' '),1) AS nkeys FROM pg_index) " +
 		"SELECT c1.relnamespace::regnamespace::text AS schema, c1.relname AS table, c2.relname AS index, " +
 		"pg_get_indexdef(i1.indexrelid) AS indexdef, pg_get_indexdef(i2.indexrelid) AS redundantdef, " +
@@ -352,19 +340,24 @@ func getSchemaRedundantIndexes(conn *store.DB) (map[string]postgresGenericStat, 
 		"AND ((i1.nkeys > i2.nkeys AND NOT i2.indisunique) OR (i1.nkeys = i2.nkeys AND ((i1.indisunique AND i2.indisunique AND (i1.indexrelid>i2.indexrelid)) " +
 		"OR (NOT i1.indisunique AND NOT i2.indisunique AND (i1.indexrelid>i2.indexrelid)) " +
 		"OR (i1.indisunique AND NOT i2.indisunique)))) AND i1.key_array[1:i2.nkeys]=i2.key_array"
-
-	res, err := conn.Query(query)
-	if err != nil {
-		return nil, err
+	var err error
+	conn := config.DB
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresSchemas, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+		saveToCache(collectorPostgresSchemas, wg, config.CacheConfig, cacheKey, res)
 	}
 
 	return parsePostgresGenericStats(res, []string{"schema", "table", "index", "indexdef", "redundantdef"}), nil
 }
 
 // collectSchemaSequences collects metrics related to sequences attached to poor-typed columns.
-func collectSchemaSequences(conn *store.DB, ch chan<- prometheus.Metric, desc typedDesc) {
-	database := conn.Conn().Config().Database
-	stats, err := getSchemaSequences(conn)
+func collectSchemaSequences(ctx context.Context, config Config, ch chan<- prometheus.Metric, wg *sync.WaitGroup, desc typedDesc) {
+	database := config.DB.Conn().Config().ConnConfig.Database
+	stats, err := getSchemaSequences(ctx, config, wg)
 	if err != nil {
 		log.Errorf("get sequences stats of database %s failed: %s; skip", database, err)
 		return
@@ -387,21 +380,25 @@ func collectSchemaSequences(conn *store.DB, ch chan<- prometheus.Metric, desc ty
 }
 
 // getSchemaSequences searches sequences attached to the poor-typed columns with risk of exhaustion.
-func getSchemaSequences(conn *store.DB) (map[string]postgresGenericStat, error) {
+func getSchemaSequences(ctx context.Context, config Config, wg *sync.WaitGroup) (map[string]postgresGenericStat, error) {
 	var query = `SELECT schemaname AS schema, sequencename AS sequence, COALESCE(last_value, 0) / max_value::float AS ratio FROM pg_sequences`
-
-	res, err := conn.Query(query)
-	if err != nil {
-		return nil, err
+	var err error
+	conn := config.DB
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresSchemas, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+		saveToCache(collectorPostgresSchemas, wg, config.CacheConfig, cacheKey, res)
 	}
-
 	return parsePostgresGenericStats(res, []string{"schema", "sequence"}), nil
 }
 
 // collectSchemaFKDatatypeMismatch collects metrics related to foreign key constraints with different data types.
-func collectSchemaFKDatatypeMismatch(conn *store.DB, ch chan<- prometheus.Metric, desc typedDesc) {
-	database := conn.Conn().Config().Database
-	stats, err := getSchemaFKDatatypeMismatch(conn)
+func collectSchemaFKDatatypeMismatch(ctx context.Context, config Config, ch chan<- prometheus.Metric, wg *sync.WaitGroup, desc typedDesc) {
+	database := config.DB.Conn().Config().ConnConfig.Database
+	stats, err := getSchemaFKDatatypeMismatch(ctx, config, wg)
 	if err != nil {
 		log.Errorf("get foreign keys data types stats of database %s failed: %s; skip", database, err)
 		return
@@ -427,7 +424,7 @@ func collectSchemaFKDatatypeMismatch(conn *store.DB, ch chan<- prometheus.Metric
 }
 
 // getSchemaFKDatatypeMismatch searches foreign key constraints with different data types.
-func getSchemaFKDatatypeMismatch(conn *store.DB) (map[string]postgresGenericStat, error) {
+func getSchemaFKDatatypeMismatch(ctx context.Context, config Config, wg *sync.WaitGroup) (map[string]postgresGenericStat, error) {
 	var query = "SELECT c1.relnamespace::regnamespace::text AS schema, c1.relname AS table, a1.attname||'::'||t1.typname AS column, " +
 		"c2.relnamespace::regnamespace::text AS refschema, c2.relname AS reftable, a2.attname||'::'||t2.typname AS refcolumn " +
 		"FROM pg_constraint JOIN pg_class c1 ON c1.oid = conrelid JOIN pg_class c2 ON c2.oid = confrelid " +
@@ -436,11 +433,15 @@ func getSchemaFKDatatypeMismatch(conn *store.DB) (map[string]postgresGenericStat
 		"JOIN pg_type t1 ON t1.oid = a1.atttypid " +
 		"JOIN pg_type t2 ON t2.oid = a2.atttypid " +
 		"WHERE a1.atttypid <> a2.atttypid AND contype = 'f'"
-
-	res, err := conn.Query(query)
-	if err != nil {
-		return nil, err
+	var err error
+	conn := config.DB
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresSchemas, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+		saveToCache(collectorPostgresSchemas, wg, config.CacheConfig, cacheKey, res)
 	}
-
 	return parsePostgresGenericStats(res, []string{"schema", "table", "column", "refschema", "reftable", "refcolumn"}), nil
 }

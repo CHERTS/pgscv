@@ -3,10 +3,8 @@ package model
 
 import (
 	"database/sql"
-	"regexp"
-
 	"github.com/cherts/pgscv/internal/filter"
-	"github.com/jackc/pgproto3/v2"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const (
@@ -24,7 +22,7 @@ const (
 type PGResult struct {
 	Nrows    int
 	Ncols    int
-	Colnames []pgproto3.FieldDescription
+	Colnames []pgconn.FieldDescription
 	Rows     [][]sql.NullString
 }
 
@@ -39,7 +37,6 @@ type PGResult struct {
 //          exclude: "(UPDATE|DELETE)"                          <- exclude metrics with labels contains these values
 //      subsystems:                                             <- Subsystems
 //        activity:                                             <- MetricsSubsystem
-//          databases: "^db(1|2)$"                              <- MetricsSubsystem.Databases
 //          query: "SELECT l1, l2, l3, v1 FROM t1 WHERE t1"     <- MetricsSubsystem.Query
 //          metrics:                                            <- MetricsSubsystem.Metrics
 //            - name: l1                                        <- UserMetric
@@ -69,10 +66,6 @@ type Subsystems map[string]MetricsSubsystem
 
 // MetricsSubsystem describes a single subsystem.
 type MetricsSubsystem struct {
-	// Databases defines which databases should be visited for collecting metrics.
-	Databases string `yaml:"databases"`
-	// DatabasesRE defines regexp object based on Databases.
-	DatabasesRE *regexp.Regexp
 	// Query defines a SQL statement used for getting label/values for metrics.
 	Query string `yaml:"query"`
 	// Metrics defines a list of labels and metrics should be extracted from Query result.

@@ -2,13 +2,14 @@
 package service
 
 import (
+	"context"
 	"fmt"
-	"regexp"
+	"github.com/cherts/pgscv/internal/cache"
+	"github.com/cherts/pgscv/internal/registry"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/prometheus/client_golang/prometheus/collectors"
 
 	"slices"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/cherts/pgscv/internal/store"
-	"github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -36,18 +36,17 @@ type Service struct {
 	Collector    Collector
 	ConstLabels  *map[string]string
 	TargetLabels *map[string]string
+	DB           *store.DB
 }
 
 const system0ServiceID = "system:0"
 
 // Config defines service's configuration.
 type Config struct {
-	RuntimeMode   int
-	NoTrackMode   bool
-	ConnDefaults  map[string]string `yaml:"defaults"` // Defaults
-	ConnsSettings ConnsSettings
-	// DatabasesRE defines regexp with databases from which builtin metrics should be collected.
-	DatabasesRE        *regexp.Regexp
+	RuntimeMode        int
+	NoTrackMode        bool
+	ConnDefaults       map[string]string `yaml:"defaults"` // Defaults
+	ConnsSettings      ConnsSettings
 	DisabledCollectors []string
 	// CollectorsSettings defines all collector settings propagated from main YAML configuration.
 	CollectorsSettings model.CollectorsSettings
@@ -57,9 +56,19 @@ type Config struct {
 	SkipConnErrorMode  bool
 	ConstLabels        *map[string]*map[string]string
 	TargetLabels       *map[string]*map[string]string
-	ConnTimeout        int  // in seconds
-	ThrottlingInterval *int // in seconds, default 25
+	ConnTimeout        int // in seconds
 	ConcurrencyLimit   *int
+	CacheConfig        *cache.Config
+	CacheKey           string
+	Pool               *pgxpool.Pool
+	PoolerConfig       *PoolConfig
+}
+
+// PoolConfig defines pgxPool configuration.
+type PoolConfig struct {
+	MaxConns     *int32
+	MinConns     *int32
+	MinIdleConns *int32
 }
 
 // Collector is an interface for prometheus.Collector.
@@ -72,14 +81,14 @@ type Collector interface {
 type Repository struct {
 	sync.RWMutex                    // protect concurrent access
 	Services     map[string]Service // service repo store
-	Registries   map[string]*prometheus.Registry
+	Registries   map[string]*registry.Registry
 }
 
 // NewRepository creates new services repository.
 func NewRepository() *Repository {
 	return &Repository{
 		Services:   make(map[string]Service),
-		Registries: make(map[string]*prometheus.Registry),
+		Registries: make(map[string]*registry.Registry),
 	}
 }
 
@@ -104,14 +113,14 @@ func (repo *Repository) addService(s Service) {
 	repo.Unlock()
 }
 
-func (repo *Repository) addRegistry(serviceID string, r *prometheus.Registry) {
+func (repo *Repository) addRegistry(serviceID string, r *registry.Registry) {
 	repo.Lock()
 	repo.Registries[serviceID] = r
 	repo.Unlock()
 }
 
 // GetRegistry returns registry with specified serviceID
-func (repo *Repository) GetRegistry(serviceID string) *prometheus.Registry {
+func (repo *Repository) GetRegistry(serviceID string) *registry.Registry {
 	repo.RLock()
 	r, ok := repo.Registries[serviceID]
 	repo.RUnlock()
@@ -188,7 +197,7 @@ func (repo *Repository) addServicesFromConfig(config Config) {
 		go func() {
 			defer wg.Done()
 			var msg string
-
+			var db *store.DB
 			if cs.ServiceType == model.ServiceTypePatroni {
 				err := attemptRequest(cs.BaseURL)
 				if err != nil {
@@ -204,27 +213,56 @@ func (repo *Repository) addServicesFromConfig(config Config) {
 				// each ConnSetting struct is used for
 				//   1) doing connection;
 				//   2) getting connection properties to define service-specific parameters.
-				pgconfig, err := pgx.ParseConfig(cs.Conninfo)
+				pgconfig, err := pgxpool.ParseConfig(cs.Conninfo)
 				if err != nil {
 					log.Warnf("%s: %s, skip", cs.Conninfo, err)
 					return
 				}
 				if config.ConnTimeout > 0 {
-					pgconfig.ConnectTimeout = time.Duration(config.ConnTimeout) * time.Second
+					pgconfig.ConnConfig.ConnectTimeout = time.Duration(config.ConnTimeout) * time.Second
+				}
+
+				if config.PoolerConfig != nil {
+					if config.PoolerConfig != nil {
+						pgconfig.MinConns = *config.PoolerConfig.MinConns
+					}
+					if config.PoolerConfig.MaxConns != nil {
+						pgconfig.MaxConns = *config.PoolerConfig.MaxConns
+					}
+					if config.PoolerConfig.MinIdleConns != nil {
+						pgconfig.MinIdleConns = *config.PoolerConfig.MinIdleConns
+					}
 				}
 
 				// Check connection using created *ConnConfig, go next if connection failed.
-				db, err := store.NewWithConfig(pgconfig)
+				db, err = store.NewWithConfig(pgconfig)
+
 				if err != nil {
 					if config.SkipConnErrorMode {
-						log.Warnf("%s@%s:%d/%s: %s", pgconfig.User, pgconfig.Host, pgconfig.Port, pgconfig.Database, err)
+						log.Warnf("%s@%s:%d/%s: %s", pgconfig.ConnConfig.User, pgconfig.ConnConfig.Host, pgconfig.ConnConfig.Port, pgconfig.ConnConfig.Database, err)
 					} else {
-						log.Warnf("%s@%s:%d/%s: %s skip", pgconfig.User, pgconfig.Host, pgconfig.Port, pgconfig.Database, err)
+						db.Close()
+						log.Warnf("%s@%s:%d/%s: %s skip", pgconfig.ConnConfig.User, pgconfig.ConnConfig.Host, pgconfig.ConnConfig.Port, pgconfig.ConnConfig.Database, err)
 						return
 					}
 				} else {
-					msg = fmt.Sprintf("service [%s] available through: %s@%s:%d/%s", k, pgconfig.User, pgconfig.Host, pgconfig.Port, pgconfig.Database)
-					db.Close()
+					if !config.SkipConnErrorMode {
+						switch cs.ServiceType {
+						case model.ServiceTypePostgresql:
+							err = db.Conn().Ping(context.Background())
+						case model.ServiceTypePgbouncer:
+							var v string
+							err = db.Conn().QueryRow(context.Background(), "SELECT 1").Scan(&v)
+						}
+
+						if err != nil {
+							log.Warnf("%s@%s:%d/%s: %s skip", pgconfig.ConnConfig.User, pgconfig.ConnConfig.Host, pgconfig.ConnConfig.Port, pgconfig.ConnConfig.Database, err)
+							db.Close()
+							return
+						}
+					}
+
+					msg = fmt.Sprintf("service [%s] available through: %s@%s:%d/%s", k, pgconfig.ConnConfig.User, pgconfig.ConnConfig.Host, pgconfig.ConnConfig.Port, pgconfig.ConnConfig.Database)
 				}
 			}
 
@@ -233,6 +271,7 @@ func (repo *Repository) addServicesFromConfig(config Config) {
 				ServiceID:    k,
 				ConnSettings: cs,
 				Collector:    nil,
+				DB:           db,
 			}
 			if config.ConstLabels != nil && (*config.ConstLabels)[k] != nil {
 				s.ConstLabels = (*config.ConstLabels)[k]
@@ -276,12 +315,13 @@ func (repo *Repository) setupServices(config Config) error {
 					ServiceType:      service.ConnSettings.ServiceType,
 					ConnString:       service.ConnSettings.Conninfo,
 					Settings:         config.CollectorsSettings,
-					DatabasesRE:      config.DatabasesRE,
 					CollectTopTable:  config.CollectTopTable,
 					CollectTopIndex:  config.CollectTopIndex,
 					CollectTopQuery:  config.CollectTopQuery,
 					ConnTimeout:      config.ConnTimeout,
 					ConcurrencyLimit: config.ConcurrencyLimit,
+					CacheConfig:      config.CacheConfig,
+					DB:               service.DB,
 				}
 				if config.ConstLabels != nil && (*config.ConstLabels)[id] != nil {
 					collectorConfig.ConstLabels = (*config.ConstLabels)[id]
@@ -321,11 +361,9 @@ func (repo *Repository) setupServices(config Config) error {
 
 				// Put updated service into repo.
 				repo.addService(service)
-				registry := prometheus.NewRegistry()
-				registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
-				registry.MustRegister(collectors.NewGoCollector())
-				registry.MustRegister(service.Collector)
-				repo.addRegistry(service.ServiceID, registry)
+				r := registry.NewRegistry(factories, collectorConfig)
+				r.MustRegister(service.Collector)
+				repo.addRegistry(service.ServiceID, r)
 				log.Debugf("service configured [%s]", id)
 			}
 		}()

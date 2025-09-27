@@ -36,6 +36,8 @@ type Discovery interface {
 const (
 	// YandexMDB constant SdConfig.type
 	YandexMDB = "yandex-mdb"
+	// Postgres constant SdConfig.type
+	Postgres = "postgres"
 )
 
 // SdConfig top level of configuration tree

@@ -1,16 +1,16 @@
 ﻿# cherts/pgscv-test-runner
-# __release_tag__ postrges v17.5 was released 2025-05-08
+# __release_tag__ postrges v17.6 was released 2025-08-14
 # __release_tag__ golang v1.24.5 was released 2025-07-08
 # __release_tag__ revive v1.10.0 was released 2025-05-28
 # __release_tag__ gosec v2.22.5 was released 2025-06-16
-FROM postgres:17.5
+FROM postgres:17.6
 
-LABEL version="1.0.9"
+LABEL version="1.0.10"
 
 # install dependencies
 RUN apt-get update && \
     apt-get -y upgrade && \
-    apt-get install -y vim make gcc git curl pgbouncer && \
+    apt-get install -y vim make gcc git curl pgbouncer memcached && \
     curl -s -L https://go.dev/dl/go1.24.5.linux-amd64.tar.gz -o - | tar xzf - -C /usr/local && \
     export PATH=$PATH:/usr/local/go/bin && \
     curl -s -L https://github.com/mgechev/revive/releases/download/v1.10.0/revive_linux_amd64.tar.gz | tar xzf - -C $(go env GOROOT)/bin revive && \
@@ -24,4 +24,4 @@ ENV PATH="${PATH}:/usr/local/bin:/usr/local/go/bin"
 COPY prepare-test-environment.sh /usr/bin/
 COPY fixtures.sql /opt/testing/
 
-CMD ["echo", "I'm pgscv test runner 1.0.9"]
+CMD ["echo", "I'm pgscv test runner 1.0.10"]

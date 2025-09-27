@@ -2,10 +2,10 @@ package collector
 
 import (
 	"database/sql"
+	"github.com/jackc/pgx/v5/pgconn"
 	"testing"
 
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,13 +44,13 @@ func Test_parsePostgresBgwriterStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 15,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("checkpoints_timed")}, {Name: []byte("checkpoints_req")},
-					{Name: []byte("checkpoint_write_time")}, {Name: []byte("checkpoint_sync_time")},
-					{Name: []byte("buffers_checkpoint")}, {Name: []byte("buffers_clean")}, {Name: []byte("maxwritten_clean")},
-					{Name: []byte("buffers_backend")}, {Name: []byte("buffers_backend_fsync")}, {Name: []byte("buffers_alloc")},
-					{Name: []byte("bgwr_stats_age_seconds")}, {Name: []byte("ckpt_stats_age_seconds")}, {Name: []byte("restartpoints_timed")},
-					{Name: []byte("restartpoints_req")}, {Name: []byte("restartpoints_done")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "checkpoints_timed"}, {Name: "checkpoints_req"},
+					{Name: "checkpoint_write_time"}, {Name: "checkpoint_sync_time"},
+					{Name: "buffers_checkpoint"}, {Name: "buffers_clean"}, {Name: "maxwritten_clean"},
+					{Name: "buffers_backend"}, {Name: "buffers_backend_fsync"}, {Name: "buffers_alloc"},
+					{Name: "bgwr_stats_age_seconds"}, {Name: "ckpt_stats_age_seconds"}, {Name: "restartpoints_timed"},
+					{Name: "restartpoints_req"}, {Name: "restartpoints_done"},
 				},
 				Rows: [][]sql.NullString{
 					{

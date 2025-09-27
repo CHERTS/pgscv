@@ -4,12 +4,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/cherts/pgscv/discovery/factory"
+	sdlog "github.com/cherts/pgscv/discovery/log"
+	"github.com/cherts/pgscv/internal/cache"
+
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/cherts/pgscv/discovery/factory"
-	sdlog "github.com/cherts/pgscv/discovery/log"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/cherts/pgscv/internal/log"
@@ -51,6 +52,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := config.Validate(); err != nil {
+		log.Errorln("validate config failed: ", err)
+		os.Exit(1)
+	}
+
 	if config.DiscoveryConfig != nil {
 		config.DiscoveryServices, err = factory.Instantiate(*config.DiscoveryConfig)
 		if err != nil {
@@ -59,9 +65,8 @@ func main() {
 		}
 	}
 
-	if err := config.Validate(); err != nil {
-		log.Errorln("validate config failed: ", err)
-		os.Exit(1)
+	if config.CacheConfig != nil {
+		config.CacheConfig.Cache = cache.GetCacheClient(*config.CacheConfig, gitCommit)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

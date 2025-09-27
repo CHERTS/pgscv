@@ -6,11 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	net_http "net/http"
-	"strings"
-	"sync"
-	"time"
-
 	"github.com/cherts/pgscv/discovery"
 	sd "github.com/cherts/pgscv/internal/discovery/service"
 	"github.com/cherts/pgscv/internal/http"
@@ -19,6 +14,9 @@ import (
 	"github.com/cherts/pgscv/internal/service"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	net_http "net/http"
+	"strings"
+	"sync"
 )
 
 const pgSCVSubscriber = "pgscv_subscriber"
@@ -33,12 +31,12 @@ func Start(ctx context.Context, config *Config) error {
 	log.Debug("start application")
 
 	serviceRepo := service.NewRepository()
+	constLabels := make(map[string]*map[string]string)
 
 	serviceConfig := service.Config{
 		NoTrackMode:        config.NoTrackMode,
 		ConnDefaults:       config.Defaults,
 		ConnsSettings:      config.ServicesConnsSettings,
-		DatabasesRE:        config.DatabasesRE,
 		DisabledCollectors: config.DisableCollectors,
 		CollectorsSettings: config.CollectorsSettings,
 		CollectTopTable:    config.CollectTopTable,
@@ -46,12 +44,30 @@ func Start(ctx context.Context, config *Config) error {
 		CollectTopQuery:    config.CollectTopQuery,
 		SkipConnErrorMode:  config.SkipConnErrorMode,
 		ConnTimeout:        config.ConnTimeout,
-		ThrottlingInterval: config.ThrottlingInterval,
 		ConcurrencyLimit:   config.ConcurrencyLimit,
+		CacheConfig:        config.CacheConfig,
+		ConstLabels:        &constLabels,
+	}
+	if config.PoolerConfig != nil {
+		serviceConfig.PoolerConfig = &service.PoolConfig{
+			MaxConns:     config.PoolerConfig.MaxConns,
+			MinConns:     config.PoolerConfig.MinConns,
+			MinIdleConns: config.PoolerConfig.MinIdleConns,
+		}
 	}
 
 	if len(config.ServicesConnsSettings) == 0 && config.DiscoveryServices == nil {
 		return errors.New("no services defined")
+	}
+
+	if len(config.ServicesConnsSettings) > 0 {
+		for id, cs := range config.ServicesConnsSettings {
+			labels := make(map[string]string)
+
+			labels["provider"] = cs.ServiceType
+			labels["provider_id"] = "services"
+			constLabels[id] = &labels
+		}
 	}
 
 	// fulfill service repo using passed services
@@ -80,7 +96,13 @@ func Start(ctx context.Context, config *Config) error {
 			}()
 			switch dt := ds.(type) {
 			case *sd.YandexDiscovery:
-				err := subscribeYandex(&ds, config, serviceRepo)
+				err := subscribe(&ds, config, serviceRepo)
+				if err != nil {
+					cancel()
+					return err
+				}
+			case *sd.PostgresDiscovery:
+				err := subscribe(&ds, config, serviceRepo)
 				if err != nil {
 					cancel()
 					return err
@@ -117,10 +139,14 @@ func Start(ctx context.Context, config *Config) error {
 	}
 }
 
-func subscribeYandex(ds *discovery.Discovery, config *Config, serviceRepo *service.Repository) error {
+var addServicesLock sync.Mutex
+
+func subscribe(ds *discovery.Discovery, config *Config, serviceRepo *service.Repository) error {
 	err := (*ds).Subscribe(pgSCVSubscriber,
 		// addService
 		func(services map[string]discovery.Service) error {
+			addServicesLock.Lock()
+			defer addServicesLock.Unlock()
 			constLabels := make(map[string]*map[string]string)
 			targetLabels := make(map[string]*map[string]string)
 			serviceDiscoveryConfig := service.Config{
@@ -136,6 +162,14 @@ func subscribeYandex(ds *discovery.Discovery, config *Config, serviceRepo *servi
 				TargetLabels:       &targetLabels,
 				ConnTimeout:        config.ConnTimeout,
 				ConcurrencyLimit:   config.ConcurrencyLimit,
+				CacheConfig:        config.CacheConfig,
+			}
+			if config.PoolerConfig != nil {
+				serviceDiscoveryConfig.PoolerConfig = &service.PoolConfig{
+					MaxConns:     config.PoolerConfig.MaxConns,
+					MinConns:     config.PoolerConfig.MinConns,
+					MinIdleConns: config.PoolerConfig.MinIdleConns,
+				}
 			}
 			var cs = make(service.ConnsSettings, len(services))
 			for serviceID, svc := range services {
@@ -167,31 +201,9 @@ func subscribeYandex(ds *discovery.Discovery, config *Config, serviceRepo *servi
 }
 
 // getMetricsHandler return http handler function to /metrics endpoint
-func getMetricsHandler(repository *service.Repository, throttlingInterval *int) func(w net_http.ResponseWriter, r *net_http.Request) {
-	throttle := struct {
-		sync.RWMutex
-		lastScrapeTime map[string]time.Time
-	}{
-		lastScrapeTime: make(map[string]time.Time),
-	}
-
+func getMetricsHandler(repository *service.Repository) func(w net_http.ResponseWriter, r *net_http.Request) {
 	return func(w net_http.ResponseWriter, r *net_http.Request) {
 		target := r.URL.Query().Get("target")
-		if throttlingInterval != nil && *throttlingInterval > 0 {
-			throttle.RLock()
-			t, ok := throttle.lastScrapeTime[target]
-			throttle.RUnlock()
-			if ok {
-				if time.Since(t) < time.Duration(*throttlingInterval)*time.Second {
-					w.WriteHeader(http.StatusOK)
-					log.Warnf("Skip scraping, method: %s, proto: %s, request_uri: %s, user_agent: %s, remote_addr: %s", r.Method, r.Proto, r.RequestURI, r.UserAgent(), r.RemoteAddr)
-					return
-				}
-			}
-			throttle.Lock()
-			throttle.lastScrapeTime[target] = time.Now()
-			throttle.Unlock()
-		}
 		if target == "" {
 			h := promhttp.InstrumentMetricHandler(
 				prometheus.DefaultRegisterer, promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{}),
@@ -273,7 +285,7 @@ func runMetricsListener(ctx context.Context, config *Config, repository *service
 		Addr:       config.ListenAddress,
 		AuthConfig: config.AuthConfig,
 	}
-	srv := http.NewServer(sCfg, getMetricsHandler(repository, config.ThrottlingInterval), getTargetsHandler(repository, config.URLPrefix, config.AuthConfig.EnableTLS))
+	srv := http.NewServer(sCfg, getMetricsHandler(repository), getTargetsHandler(repository, config.URLPrefix, config.AuthConfig.EnableTLS))
 
 	errCh := make(chan error)
 	defer close(errCh)

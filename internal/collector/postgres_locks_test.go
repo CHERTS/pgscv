@@ -2,8 +2,8 @@ package collector
 
 import (
 	"database/sql"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/cherts/pgscv/internal/model"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -33,12 +33,12 @@ func Test_parsePostgresLocksStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 1,
 				Ncols: 10,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("access_share_lock")}, {Name: []byte("row_share_lock")},
-					{Name: []byte("row_exclusive_lock")}, {Name: []byte("share_update_exclusive_lock")},
-					{Name: []byte("share_lock")}, {Name: []byte("share_row_exclusive_lock")},
-					{Name: []byte("exclusive_lock")}, {Name: []byte("access_exclusive_lock")},
-					{Name: []byte("not_granted")}, {Name: []byte("total")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "access_share_lock"}, {Name: "row_share_lock"},
+					{Name: "row_exclusive_lock"}, {Name: "share_update_exclusive_lock"},
+					{Name: "share_lock"}, {Name: "share_row_exclusive_lock"},
+					{Name: "exclusive_lock"}, {Name: "access_exclusive_lock"},
+					{Name: "not_granted"}, {Name: "total"},
 				},
 				Rows: [][]sql.NullString{
 					{

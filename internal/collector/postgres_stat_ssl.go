@@ -1,12 +1,13 @@
 package collector
 
 import (
+	"context"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -47,30 +48,31 @@ func NewPostgresStatSslCollector(constLabels labels, settings model.CollectorSet
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresStatSslCollector) Update(config Config, ch chan<- prometheus.Metric) error {
+func (c *postgresStatSslCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
 	if config.pgVersion.Numeric < PostgresV95 {
 		log.Debugln("[postgres stat_ssl collector]: pg_stat_ssl view are not available, required Postgres 9.5 or newer")
 		return nil
 	}
 
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+	conn := config.DB
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	var err error
 
-	// Collecting pg_stat_ssl since Postgres 9.5.
-	if config.pgVersion.Numeric >= PostgresV95 {
-		res, err := conn.Query(postgresStatSslQueryLatest)
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresStatSSL, postgresStatSslQueryLatest)
+	if res == nil {
+		res, err = conn.Query(ctx, postgresStatSslQueryLatest)
 		if err != nil {
 			log.Warnf("get pg_stat_ssl failed: %s; skip", err)
-		} else {
-			// Parse pg_stat_ssl stats.
-			stats := parsePostgresStatSsl(res, c.labelNames)
-			for _, stat := range stats {
-				ch <- c.sslConnNumber.newConstMetric(stat.ConnNumber, stat.Database, stat.Username)
-			}
+			return err
 		}
+		saveToCache(collectorPostgresStatSSL, wg, config.CacheConfig, cacheKey, res)
+	}
+
+	// Parse pg_stat_ssl stats.
+	stats := parsePostgresStatSsl(res, c.labelNames)
+	for _, stat := range stats {
+		ch <- c.sslConnNumber.newConstMetric(stat.ConnNumber, stat.Database, stat.Username)
 	}
 
 	return nil

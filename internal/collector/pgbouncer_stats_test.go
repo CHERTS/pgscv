@@ -2,8 +2,8 @@ package collector
 
 import (
 	"database/sql"
-	"github.com/jackc/pgproto3/v2"
 	"github.com/cherts/pgscv/internal/model"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -36,10 +36,10 @@ func Test_parsePgbouncerStatsStats(t *testing.T) {
 			res: &model.PGResult{
 				Nrows: 2,
 				Ncols: 8,
-				Colnames: []pgproto3.FieldDescription{
-					{Name: []byte("database")},
-					{Name: []byte("total_xact_count")}, {Name: []byte("total_query_count")}, {Name: []byte("total_received")}, {Name: []byte("total_sent")},
-					{Name: []byte("total_xact_time")}, {Name: []byte("total_query_time")}, {Name: []byte("total_wait_time")},
+				Colnames: []pgconn.FieldDescription{
+					{Name: "database"},
+					{Name: "total_xact_count"}, {Name: "total_query_count"}, {Name: "total_received"}, {Name: "total_sent"},
+					{Name: "total_xact_time"}, {Name: "total_query_time"}, {Name: "total_wait_time"},
 				},
 				Rows: [][]sql.NullString{
 					{

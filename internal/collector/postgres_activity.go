@@ -6,10 +6,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -147,39 +147,66 @@ func NewPostgresActivityCollector(constLabels labels, settings model.CollectorSe
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresActivityCollector) Update(config Config, ch chan<- prometheus.Metric) error {
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
+func (c *postgresActivityCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
+	conn := config.DB
+	if err := conn.Conn().Ping(ctx); err != nil { // not caching
 		ch <- c.up.newConstMetric(0)
 		return err
 	}
-	defer conn.Close()
 
-	// get pg_stat_activity stats
-	res, err := conn.Query(selectActivityQuery(config.pgVersion.Numeric))
-	if err != nil {
-		return err
+	var err error
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+
+	query := selectActivityQuery(config.pgVersion.Numeric)
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresActivity, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
+		if err != nil {
+			return err
+		}
+		saveToCache(collectorPostgresActivity, wg, config.CacheConfig, cacheKey, res)
 	}
 
 	// parse pg_stat_activity stats
 	stats := parsePostgresActivityStats(res, c.re)
 
 	// get pg_prepared_xacts stats
-	var count int
-	err = conn.Conn().QueryRow(context.Background(), postgresPreparedXactQuery).Scan(&count)
-	if err != nil {
-		log.Warnf("query pg_prepared_xacts failed: %s; skip", err)
-	} else {
-		stats.prepared = float64(count)
+	var count int64
+	cacheKey, res, _ = getFromCache(config.CacheConfig, config.ConnString, collectorPostgresActivity, postgresPreparedXactQuery)
+	if res == nil {
+		res, err = conn.Query(ctx, postgresPreparedXactQuery)
+		if err != nil {
+			return err
+		}
+		saveToCache(collectorPostgresActivity, wg, config.CacheConfig, cacheKey, res)
+	}
+	if len(res.Rows) == 1 && len(res.Rows[0]) == 1 {
+		count, err = strconv.ParseInt(res.Rows[0][0].String, 10, 64)
+		if err != nil {
+			log.Warnf("query pg_prepared_xacts failed: %s; skip", err)
+		} else {
+			stats.prepared = float64(count)
+		}
 	}
 
 	// get postmaster start time
 	var startTime float64
-	err = conn.Conn().QueryRow(context.Background(), postgresStartTimeQuery).Scan(&startTime)
-	if err != nil {
-		log.Warnf("query postmaster start time failed: %s; skip", err)
-	} else {
-		stats.startTime = startTime
+	cacheKey, res, _ = getFromCache(config.CacheConfig, config.ConnString, postgresStartTimeQuery, postgresPreparedXactQuery)
+	if res == nil {
+		res, err = conn.Query(ctx, postgresStartTimeQuery)
+		if err != nil {
+			return err
+		}
+		saveToCache(collectorPostgresActivity, wg, config.CacheConfig, cacheKey, res)
+	}
+	if len(res.Rows) == 1 && len(res.Rows[0]) == 1 {
+		startTime, err = strconv.ParseFloat(res.Rows[0][0].String, 32)
+		if err != nil {
+			log.Warnf("query postmaster start time failed: %s; skip", err)
+		} else {
+			stats.startTime = startTime
+		}
 	}
 
 	// Send collected metrics.
@@ -362,7 +389,7 @@ func parsePostgresActivityStats(r *model.PGResult, re queryRegexp) postgresActiv
 	// processed row.
 	var colindexes = map[string]int{}
 	for i, colname := range r.Colnames {
-		colindexes[string(colname.Name)] = i
+		colindexes[colname.Name] = i
 
 		if string(colname.Name) == "waiting" {
 			waitColumnName = "waiting"
@@ -377,7 +404,7 @@ func parsePostgresActivityStats(r *model.PGResult, re queryRegexp) postgresActiv
 			}
 
 			// Run column-specific logic.
-			switch string(colname.Name) {
+			switch colname.Name {
 			case "state":
 				waitColIdx := colindexes[waitColumnName]
 				databaseColIdx := colindexes["database"]

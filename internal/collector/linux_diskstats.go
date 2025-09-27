@@ -4,6 +4,7 @@ package collector
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -142,7 +143,7 @@ func NewDiskstatsCollector(constLabels labels, settings model.CollectorSettings)
 	}, nil
 }
 
-func (c *diskstatsCollector) Update(_ Config, ch chan<- prometheus.Metric) error {
+func (c *diskstatsCollector) Update(_ context.Context, _ Config, ch chan<- prometheus.Metric) error {
 	stats, err := getDiskstats()
 	if err != nil {
 		return fmt.Errorf("get diskstats failed: %s", err)

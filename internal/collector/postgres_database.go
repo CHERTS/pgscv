@@ -2,12 +2,12 @@
 package collector
 
 import (
-	"strconv"
-
+	"context"
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
+	"strconv"
+	"sync"
 )
 
 const (
@@ -232,23 +232,31 @@ func NewPostgresDatabasesCollector(constLabels labels, settings model.CollectorS
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresDatabasesCollector) Update(config Config, ch chan<- prometheus.Metric) error {
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+func (c *postgresDatabasesCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
+	var err error
+	conn := config.DB
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
 
-	res, err := conn.Query(selectDatabasesQuery(config.pgVersion.Numeric))
-	if err != nil {
-		return err
+	query := selectDatabasesQuery(config.pgVersion.Numeric)
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresDatabases, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
+		if err != nil {
+			return err
+		}
+		saveToCache(collectorPostgresDatabases, wg, config.CacheConfig, cacheKey, res)
 	}
 
 	stats := parsePostgresDatabasesStats(res, c.labelNames)
 
-	res, err = conn.Query(xidLimitQuery)
-	if err != nil {
-		return err
+	cacheKey, res, _ = getFromCache(config.CacheConfig, config.ConnString, collectorPostgresDatabases, xidLimitQuery)
+	if res == nil {
+		res, err = conn.Query(ctx, xidLimitQuery)
+		if err != nil {
+			return err
+		}
+		saveToCache(collectorPostgresDatabases, wg, config.CacheConfig, cacheKey, res)
 	}
 
 	xidStats := parsePostgresXidLimitStats(res)

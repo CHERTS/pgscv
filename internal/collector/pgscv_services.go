@@ -2,6 +2,7 @@
 package collector
 
 import (
+	"context"
 	"github.com/cherts/pgscv/internal/model"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -23,7 +24,7 @@ func NewPgscvServicesCollector(constLabels labels, settings model.CollectorSetti
 }
 
 // Update method is used for sending pgscvServicesCollector's metrics.
-func (c *pgscvServicesCollector) Update(config Config, ch chan<- prometheus.Metric) error {
+func (c *pgscvServicesCollector) Update(_ context.Context, config Config, ch chan<- prometheus.Metric) error {
 	ch <- c.service.newConstMetric(1, config.ServiceType)
 
 	return nil

@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -103,7 +103,7 @@ func NewPostgresStorageCollector(constLabels labels, settings model.CollectorSet
 }
 
 // Update method collects statistics, parse it and produces metrics.
-func (c *postgresStorageCollector) Update(config Config, ch chan<- prometheus.Metric) error {
+func (c *postgresStorageCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
 	// Following directory listing functions are available since:
 	// - pg_ls_dir(), pg_ls_waldir() since Postgres 10
 	// - pg_ls_tmpdir() since Postgres 12
@@ -112,25 +112,30 @@ func (c *postgresStorageCollector) Update(config Config, ch chan<- prometheus.Me
 		return nil
 	}
 
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+	conn := config.DB
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	var err error
+	var cacheKey string
+	var res *model.PGResult
 
 	// Collecting in-flight temp only since Postgres 12.
 	if config.pgVersion.Numeric >= PostgresV12 {
-		res, err := conn.Query(postgresTempFilesInflightQuery)
-		if err != nil {
-			log.Warnf("get in-flight temp files failed: %s; skip", err)
-		} else {
-			stats := parsePostgresTempFileInflght(res)
-
-			for _, stat := range stats {
-				ch <- c.tempFiles.newConstMetric(stat.tempfiles, stat.tablespace)
-				ch <- c.tempBytes.newConstMetric(stat.tempbytes, stat.tablespace)
-				ch <- c.tempFilesMaxAge.newConstMetric(stat.tempmaxage, stat.tablespace)
+		cacheKey, res, _ = getFromCache(config.CacheConfig, config.ConnString, collectorPostgresStorage, postgresTempFilesInflightQuery)
+		if res == nil {
+			res, err = conn.Query(ctx, postgresTempFilesInflightQuery)
+			if err != nil {
+				log.Warnf("get in-flight temp files failed: %s; skip", err)
+				return err
 			}
+			saveToCache(collectorPostgresStorage, wg, config.CacheConfig, cacheKey, res)
+		}
+
+		stats := parsePostgresTempFileInflght(res)
+		for _, stat := range stats {
+			ch <- c.tempFiles.newConstMetric(stat.tempfiles, stat.tablespace)
+			ch <- c.tempBytes.newConstMetric(stat.tempbytes, stat.tablespace)
+			ch <- c.tempFilesMaxAge.newConstMetric(stat.tempmaxage, stat.tablespace)
 		}
 	}
 
@@ -140,7 +145,7 @@ func (c *postgresStorageCollector) Update(config Config, ch chan<- prometheus.Me
 	if !config.localService {
 		// Collect a limited set of Wal metrics
 		log.Debugln("[postgres storage collector]: collecting limited WAL, Log and Temp file metrics from remote services")
-		dirstats, err := newPostgresStat(conn, config.loggingCollector, config.pgVersion.Numeric)
+		dirstats, err := newPostgresStat(ctx, config, wg)
 		if err != nil {
 			return err
 		}
@@ -164,7 +169,7 @@ func (c *postgresStorageCollector) Update(config Config, ch chan<- prometheus.Me
 	}
 
 	// Collecting other server-directories stats (DATADIR and tablespaces, WALDIR, LOGDIR, TEMPDIR).
-	dirstats, tblspcStats, err := newPostgresDirStat(conn, config.dataDirectory, config.loggingCollector, config.pgVersion.Numeric)
+	dirstats, tblspcStats, err := newPostgresDirStat(ctx, config, wg)
 	if err != nil {
 		return err
 	}
@@ -289,20 +294,20 @@ type postgresDirStat struct {
 }
 
 // newPostgresStat returns sizes of Postgres server directories.
-func newPostgresStat(conn *store.DB, logcollector bool, version int) (*postgresDirStat, error) {
+func newPostgresStat(ctx context.Context, config Config, wg *sync.WaitGroup) (*postgresDirStat, error) {
 	// Get Wal properties.
-	waldirPath, waldirSize, waldirFilesCount, err := getWalStat(conn)
+	waldirPath, waldirSize, waldirFilesCount, err := getWalStat(ctx, config, wg)
 	if err != nil {
 		log.Errorln(err)
 	}
 
-	logdirPath, logdirSize, logdirFilesCount, err := getLogStat(conn, logcollector)
+	logdirPath, logdirSize, logdirFilesCount, err := getLogStat(ctx, config, wg, config.loggingCollector)
 	if err != nil {
 		log.Errorln(err)
 	}
 
 	// Get temp files and directories properties.
-	tmpfilesSize, tmpfilesCount, err := getTempfilesStat(conn, version)
+	tmpfilesSize, tmpfilesCount, err := getTempfilesStat(ctx, config, config.pgVersion.Numeric, wg)
 	if err != nil {
 		log.Errorln(err)
 	}
@@ -321,7 +326,7 @@ func newPostgresStat(conn *store.DB, logcollector bool, version int) (*postgresD
 }
 
 // newPostgresDirStat returns sizes of Postgres server directories.
-func newPostgresDirStat(conn *store.DB, datadir string, logcollector bool, version int) (*postgresDirStat, []tablespaceStat, error) {
+func newPostgresDirStat(ctx context.Context, config Config, wg *sync.WaitGroup) (*postgresDirStat, []tablespaceStat, error) {
 	// Get directories mountpoints.
 	mounts, err := getMountpoints()
 	if err != nil {
@@ -329,38 +334,38 @@ func newPostgresDirStat(conn *store.DB, datadir string, logcollector bool, versi
 	}
 
 	// Get DATADIR properties.
-	datadirDevice, datadirMount, datadirSize, err := getDatadirStat(datadir, mounts)
+	datadirDevice, datadirMount, datadirSize, err := getDatadirStat(config.dataDirectory, mounts)
 	if err != nil {
 		log.Errorln(err)
 	}
 
 	// Get tablespaces stats.
-	tblspcStat, err := getTablespacesStat(conn, mounts)
+	tblspcStat, err := getTablespacesStat(ctx, config, wg, mounts)
 	if err != nil {
 		log.Errorln(err)
 	}
 
 	// Get WALDIR properties.
-	waldirDevice, waldirPath, waldirMountpoint, waldirSize, waldirFilesCount, err := getWaldirStat(conn, mounts)
+	waldirDevice, waldirPath, waldirMountpoint, waldirSize, waldirFilesCount, err := getWaldirStat(ctx, config, wg, mounts)
 	if err != nil {
 		log.Errorln(err)
 	}
 
 	// Get LOGDIR properties.
-	logdirDevice, logdirPath, logdirMountpoint, logdirSize, logdirFilesCount, err := getLogdirStat(conn, logcollector, datadir, mounts)
+	logdirDevice, logdirPath, logdirMountpoint, logdirSize, logdirFilesCount, err := getLogdirStat(ctx, config, wg, config.loggingCollector, config.dataDirectory, mounts)
 	if err != nil {
 		log.Errorln(err)
 	}
 
 	// Get temp files and directories properties.
-	tmpfilesSize, tmpfilesCount, err := getTempfilesStat(conn, version)
+	tmpfilesSize, tmpfilesCount, err := getTempfilesStat(ctx, config, config.pgVersion.Numeric, wg)
 	if err != nil {
 		log.Errorln(err)
 	}
 
 	// Return stats and directories properties.
 	return &postgresDirStat{
-		datadirPath:       datadir,
+		datadirPath:       config.dataDirectory,
 		datadirMountpoint: datadirMount,
 		datadirDevice:     datadirDevice,
 		datadirSizeBytes:  float64(datadirSize),
@@ -407,22 +412,32 @@ type tablespaceStat struct {
 }
 
 // getTablespacesStat returns filesystem info related to WALDIR.
-func getTablespacesStat(conn *store.DB, mounts []mount) ([]tablespaceStat, error) {
-	rows, err := conn.Conn().
-		Query(context.Background(), "select spcname, coalesce(nullif(pg_tablespace_location(oid), ''), current_setting('data_directory')) as path, pg_tablespace_size(oid) as size from pg_tablespace")
-	if err != nil {
-		return nil, fmt.Errorf("get tablespaces stats failed: %s", err)
+func getTablespacesStat(ctx context.Context, config Config, wg *sync.WaitGroup, mounts []mount) ([]tablespaceStat, error) {
+	var err error
+	query := "select spcname, coalesce(nullif(pg_tablespace_location(oid), ''), current_setting('data_directory')) as path, pg_tablespace_size(oid) as size from pg_tablespace"
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresStorage, query)
+	if res == nil {
+		res, err = config.DB.Query(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+		saveToCache(collectorPostgresStorage, wg, config.CacheConfig, cacheKey, res)
 	}
 
 	var stats []tablespaceStat
-
-	for rows.Next() {
+	for _, row := range res.Rows {
 		var name, path string
-		var size int64
-
-		err := rows.Scan(&name, &path, &size)
+		var size float64
+		if len(row) < 3 {
+			log.Errorf("scan tablespaces row data failed")
+			break
+		}
+		name = row[0].String
+		path = row[1].String
+		size, err = strconv.ParseFloat(row[2].String, 64)
 		if err != nil {
-			return nil, fmt.Errorf("scan tablespaces row data failed: %s", err)
+			log.Errorf("scan tablespaces row data failed: %s", err)
+			continue
 		}
 
 		mountpoint, device, err := findMountpoint(mounts, path)
@@ -437,7 +452,7 @@ func getTablespacesStat(conn *store.DB, mounts []mount) ([]tablespaceStat, error
 			device:     device,
 			mountpoint: mountpoint,
 			path:       path,
-			size:       float64(size),
+			size:       size,
 		})
 	}
 
@@ -445,22 +460,38 @@ func getTablespacesStat(conn *store.DB, mounts []mount) ([]tablespaceStat, error
 }
 
 // getWalStat returns Wal info related to WALDIR.
-func getWalStat(conn *store.DB) (string, int64, int64, error) {
+func getWalStat(ctx context.Context, config Config, wg *sync.WaitGroup) (string, int64, int64, error) {
+	var err error
 	var path string
 	var size, count int64
-	err := conn.Conn().
-		QueryRow(context.Background(), "SELECT current_setting('data_directory')||'/pg_wal' AS path, COALESCE(sum(size), 0) AS bytes, COALESCE(count(name), 0) AS count FROM pg_ls_waldir()").
-		Scan(&path, &size, &count)
-	if err != nil {
-		return "", 0, 0, fmt.Errorf("get WAL directory size failed: %s", err)
+	query := "SELECT current_setting('data_directory')||'/pg_wal' AS path, COALESCE(sum(size), 0) AS bytes, COALESCE(count(name), 0) AS count FROM pg_ls_waldir()"
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresStorage, query)
+	if res == nil {
+		res, err = config.DB.Query(ctx, query)
+		if err != nil {
+			return "", 0, 0, err
+		}
+		saveToCache(collectorPostgresStorage, wg, config.CacheConfig, cacheKey, res)
 	}
-
+	if len(res.Rows) == 0 || len(res.Rows[0]) < 3 {
+		return "", 0, 0, fmt.Errorf("error getWalStat")
+	}
+	row := res.Rows[0]
+	path = row[0].String
+	size, err = strconv.ParseInt(row[1].String, 10, 64)
+	if err != nil {
+		return "", 0, 0, err
+	}
+	count, err = strconv.ParseInt(row[2].String, 10, 64)
+	if err != nil {
+		return "", 0, 0, err
+	}
 	return path, size, count, nil
 }
 
 // getWaldirStat returns filesystem info related to WALDIR.
-func getWaldirStat(conn *store.DB, mounts []mount) (string, string, string, int64, int64, error) {
-	path, size, count, err := getWalStat(conn)
+func getWaldirStat(ctx context.Context, config Config, wg *sync.WaitGroup, mounts []mount) (string, string, string, int64, int64, error) {
+	path, size, count, err := getWalStat(ctx, config, wg)
 	if err != nil {
 		return "", "", "", 0, 0, err
 	}
@@ -476,7 +507,7 @@ func getWaldirStat(conn *store.DB, mounts []mount) (string, string, string, int6
 }
 
 // getLogStat returns Log info related to LOGDIR.
-func getLogStat(conn *store.DB, logcollector bool) (string, int64, int64, error) {
+func getLogStat(ctx context.Context, config Config, wg *sync.WaitGroup, logcollector bool) (string, int64, int64, error) {
 	if !logcollector {
 		// Disabled logging_collector means all logs are written to stdout.
 		// There is no reliable way to understand file location of stdout (it can be a symlink from /proc/pid/fd/1 -> somewhere)
@@ -485,19 +516,37 @@ func getLogStat(conn *store.DB, logcollector bool) (string, int64, int64, error)
 
 	var size, count int64
 	var path string
-	err := conn.Conn().
-		QueryRow(context.Background(), "SELECT current_setting('log_directory') AS path, COALESCE(sum(size), 0) AS bytes, COALESCE(count(name), 0) AS count FROM pg_ls_logdir()").
-		Scan(&path, &size, &count)
-	if err != nil {
-		return "", 0, 0, fmt.Errorf("get log directory size failed: %s", err)
-	}
+	var err error
 
+	query := "SELECT current_setting('log_directory') AS path, COALESCE(sum(size), 0) AS bytes, COALESCE(count(name), 0) AS count FROM pg_ls_logdir()"
+
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresStorage, query)
+	if res == nil {
+		res, err = config.DB.Query(ctx, query)
+		if err != nil {
+			return "", 0, 0, err
+		}
+		saveToCache(collectorPostgresStorage, wg, config.CacheConfig, cacheKey, res)
+	}
+	if len(res.Rows) == 0 || len(res.Rows[0]) < 3 {
+		return "", 0, 0, fmt.Errorf("error getWalStat")
+	}
+	row := res.Rows[0]
+	path = row[0].String
+	size, err = strconv.ParseInt(row[1].String, 10, 64)
+	if err != nil {
+		return "", 0, 0, err
+	}
+	count, err = strconv.ParseInt(row[1].String, 10, 64)
+	if err != nil {
+		return "", 0, 0, err
+	}
 	return path, size, count, nil
 }
 
 // getLogdirStat returns filesystem info related to LOGDIR.
-func getLogdirStat(conn *store.DB, logcollector bool, datadir string, mounts []mount) (string, string, string, int64, int64, error) {
-	path, size, count, err := getLogStat(conn, logcollector)
+func getLogdirStat(ctx context.Context, config Config, wg *sync.WaitGroup, logcollector bool, datadir string, mounts []mount) (string, string, string, int64, int64, error) {
+	path, size, count, err := getLogStat(ctx, config, wg, logcollector)
 	if err != nil {
 		return "", "", "", 0, 0, err
 	}
@@ -519,19 +568,33 @@ func getLogdirStat(conn *store.DB, logcollector bool, datadir string, mounts []m
 }
 
 // getTempfilesStat returns filesystem info related to temp files and directories.
-func getTempfilesStat(conn *store.DB, version int) (int64, int64, error) {
+func getTempfilesStat(ctx context.Context, config Config, version int, wg *sync.WaitGroup) (int64, int64, error) {
 	if version < PostgresV12 {
 		return 0, 0, nil
 	}
-
-	var size, count int64
-	err := conn.Conn().
-		QueryRow(context.Background(), "SELECT coalesce(sum(size), 0) AS bytes, coalesce(count(name), 0) AS count FROM (SELECT (pg_ls_tmpdir(oid)).* FROM pg_tablespace WHERE spcname != 'pg_global') tablespaces").
-		Scan(&size, &count)
-	if err != nil {
-		return 0, 0, fmt.Errorf("get total size of temp files failed: %s", err)
+	var err error
+	query := "SELECT coalesce(sum(size), 0) AS bytes, coalesce(count(name), 0) AS count FROM (SELECT (pg_ls_tmpdir(oid)).* FROM pg_tablespace WHERE spcname != 'pg_global') tablespaces"
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresStorage, query)
+	if res == nil {
+		res, err = config.DB.Query(ctx, query)
+		if err != nil {
+			return 0, 0, err
+		}
+		saveToCache(collectorPostgresStorage, wg, config.CacheConfig, cacheKey, res)
 	}
-
+	if len(res.Rows) == 0 || len(res.Rows[0]) < 2 {
+		return 0, 0, fmt.Errorf("error getWalStat")
+	}
+	row := res.Rows[0]
+	var size, count int64
+	size, err = strconv.ParseInt(row[0].String, 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	count, err = strconv.ParseInt(row[1].String, 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
 	return size, count, nil
 }
 

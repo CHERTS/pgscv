@@ -1,12 +1,13 @@
 package collector
 
 import (
+	"context"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -157,45 +158,47 @@ func NewPostgresStatIOCollector(constLabels labels, settings model.CollectorSett
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresStatIOCollector) Update(config Config, ch chan<- prometheus.Metric) error {
+func (c *postgresStatIOCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
 	if config.pgVersion.Numeric < PostgresV16 {
 		log.Debugln("[postgres stat_io collector]: pg_stat_io view are not available, required Postgres 16 or newer")
 		return nil
 	}
 
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+	conn := config.DB
+	query := selectStatIOQuery(config.pgVersion.Numeric)
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	var err error
 
-	// Collecting pg_stat_io since Postgres 16.
-	if config.pgVersion.Numeric >= PostgresV16 {
-		res, err := conn.Query(selectStatIOQuery(config.pgVersion.Numeric))
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresStatIO, query)
+	if res == nil {
+		res, err = conn.Query(ctx, query)
 		if err != nil {
 			log.Warnf("get pg_stat_io failed: %s; skip", err)
-		} else {
-			stats := parsePostgresStatIO(res, c.labelNames)
-
-			for _, stat := range stats {
-				ch <- c.reads.newConstMetric(stat.Reads, stat.BackendType, stat.IoObject, stat.IoContext)
-				ch <- c.readTime.newConstMetric(stat.ReadTime, stat.BackendType, stat.IoObject, stat.IoContext)
-				ch <- c.writes.newConstMetric(stat.Writes, stat.BackendType, stat.IoObject, stat.IoContext)
-				ch <- c.writeTime.newConstMetric(stat.WriteTime, stat.BackendType, stat.IoObject, stat.IoContext)
-				ch <- c.writebacks.newConstMetric(stat.Writebacks, stat.BackendType, stat.IoObject, stat.IoContext)
-				ch <- c.writebackTime.newConstMetric(stat.WritebackTime, stat.BackendType, stat.IoObject, stat.IoContext)
-				ch <- c.extends.newConstMetric(stat.Extends, stat.BackendType, stat.IoObject, stat.IoContext)
-				ch <- c.extendTime.newConstMetric(stat.ExtendTime, stat.BackendType, stat.IoObject, stat.IoContext)
-				ch <- c.hits.newConstMetric(stat.Hits, stat.BackendType, stat.IoObject, stat.IoContext)
-				ch <- c.evictions.newConstMetric(stat.Evictions, stat.BackendType, stat.IoObject, stat.IoContext)
-				ch <- c.reuses.newConstMetric(stat.Reuses, stat.BackendType, stat.IoObject, stat.IoContext)
-				ch <- c.fsyncs.newConstMetric(stat.Fsyncs, stat.BackendType, stat.IoObject, stat.IoContext)
-				ch <- c.fsyncTime.newConstMetric(stat.FsyncTime, stat.BackendType, stat.IoObject, stat.IoContext)
-				ch <- c.readBytes.newConstMetric(stat.ReadBytes, stat.BackendType, stat.IoObject, stat.IoContext)
-				ch <- c.writeBytes.newConstMetric(stat.WriteBytes, stat.BackendType, stat.IoObject, stat.IoContext)
-				ch <- c.extendBytes.newConstMetric(stat.ExtendBytes, stat.BackendType, stat.IoObject, stat.IoContext)
-			}
+			return err
 		}
+		saveToCache(collectorPostgresStatIO, wg, config.CacheConfig, cacheKey, res)
+	}
+
+	stats := parsePostgresStatIO(res, c.labelNames)
+
+	for _, stat := range stats {
+		ch <- c.reads.newConstMetric(stat.Reads, stat.BackendType, stat.IoObject, stat.IoContext)
+		ch <- c.readTime.newConstMetric(stat.ReadTime, stat.BackendType, stat.IoObject, stat.IoContext)
+		ch <- c.writes.newConstMetric(stat.Writes, stat.BackendType, stat.IoObject, stat.IoContext)
+		ch <- c.writeTime.newConstMetric(stat.WriteTime, stat.BackendType, stat.IoObject, stat.IoContext)
+		ch <- c.writebacks.newConstMetric(stat.Writebacks, stat.BackendType, stat.IoObject, stat.IoContext)
+		ch <- c.writebackTime.newConstMetric(stat.WritebackTime, stat.BackendType, stat.IoObject, stat.IoContext)
+		ch <- c.extends.newConstMetric(stat.Extends, stat.BackendType, stat.IoObject, stat.IoContext)
+		ch <- c.extendTime.newConstMetric(stat.ExtendTime, stat.BackendType, stat.IoObject, stat.IoContext)
+		ch <- c.hits.newConstMetric(stat.Hits, stat.BackendType, stat.IoObject, stat.IoContext)
+		ch <- c.evictions.newConstMetric(stat.Evictions, stat.BackendType, stat.IoObject, stat.IoContext)
+		ch <- c.reuses.newConstMetric(stat.Reuses, stat.BackendType, stat.IoObject, stat.IoContext)
+		ch <- c.fsyncs.newConstMetric(stat.Fsyncs, stat.BackendType, stat.IoObject, stat.IoContext)
+		ch <- c.fsyncTime.newConstMetric(stat.FsyncTime, stat.BackendType, stat.IoObject, stat.IoContext)
+		ch <- c.readBytes.newConstMetric(stat.ReadBytes, stat.BackendType, stat.IoObject, stat.IoContext)
+		ch <- c.writeBytes.newConstMetric(stat.WriteBytes, stat.BackendType, stat.IoObject, stat.IoContext)
+		ch <- c.extendBytes.newConstMetric(stat.ExtendBytes, stat.BackendType, stat.IoObject, stat.IoContext)
 	}
 
 	return nil

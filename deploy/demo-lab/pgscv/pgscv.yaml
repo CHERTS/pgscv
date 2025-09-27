@@ -8,72 +8,143 @@ no_track_mode: false
 #collect_top_query: 10
 #collect_top_table: 10
 #collect_top_index: 10
-concurrency_limit: 5
+#concurrency_limit: 5
 skip_conn_error_mode: true
 url_prefix: http://pgscv:9890
 #conn_timeout: 3
-throttling_interval: 25
+cache:
+  type: "in-memory"       # OR "memcached"
+#  server: 127.0.0.1:11211 # only "memcached" cache type
+  ttl: 30s
+  collectors:
+    postgres/indexes:
+      ttl: 10m
+    postgres/tables:
+      ttl: 10m
+    postgres/statements:
+      ttl: 5m
+discovery:
+  postgres9:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres9:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres10:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres10:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres11:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres11:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres12:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres12:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres13:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres13:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres14:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres14:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres15:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres15:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres16:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres16:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres17:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres17:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres9replica1:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres9replica1:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres9replica2:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres9replica2:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres10replica1:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres10replica1:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres11replica1:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres11replica1:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres12replica1:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres12replica1:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres13replica1:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres13replica1:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres14replica1:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres14replica1:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres15replica1:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres15replica1:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres16replica1:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres16replica1:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres17replica1:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres17replica1:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
+  postgres17replica2:
+    type: postgres
+    config:
+      conninfo: "postgres://pgscv:pgscv@postgres17replica2:5432/postgres"
+      db: ".*"
+      exclude_db: "postgres"
 services:
-  "postgres9":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres9:5432/postgres"
-  "postgres10":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres10:5432/postgres"
-  "postgres11":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres11:5432/postgres"
-  "postgres12":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres12:5432/postgres"
-  "postgres13":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres13:5432/postgres"
-  "postgres14":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres14:5432/postgres"
-  "postgres15":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres15:5432/postgres"
-  "postgres16":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres16:5432/postgres"
-  "postgres17":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres17:5432/postgres"
-  "postgres9replica1":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres9replica1:5432/postgres"
-  "postgres9replica2":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres9replica2:5432/postgres"
-  "postgres10replica1":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres10replica1:5432/postgres"
-  "postgres11replica1":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres11replica1:5432/postgres"
-  "postgres12replica1":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres12replica1:5432/postgres"
-  "postgres13replica1":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres13replica1:5432/postgres"
-  "postgres14replica1":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres14replica1:5432/postgres"
-  "postgres15replica1":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres15replica1:5432/postgres"
-  "postgres16replica1":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres16replica1:5432/postgres"
-  "postgres17replica1":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres17replica1:5432/postgres"
-  "postgres17replica2":
-    service_type: "postgres"
-    conninfo: "postgres://pgscv:pgscv@postgres17replica2:5432/postgres"
   "patroni_pg_1":
     service_type: "postgres"
     conninfo: "postgres://postgres:postgres@patroni1:5432/postgres"
@@ -119,7 +190,6 @@ services:
   "pgbouncer17":
     service_type: "pgbouncer"
     conninfo: "postgres://pgscv:pgscv@pgbouncer17:5432/pgbouncer"
-databases: "pgbench"
 disable_collectors:
   - system
 #  - postgres/pgscv

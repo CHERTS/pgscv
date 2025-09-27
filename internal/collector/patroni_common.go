@@ -2,6 +2,7 @@
 package collector
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -224,7 +225,7 @@ func NewPatroniCommonCollector(constLabels labels, settings model.CollectorSetti
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *patroniCommonCollector) Update(config Config, ch chan<- prometheus.Metric) error {
+func (c *patroniCommonCollector) Update(_ context.Context, config Config, ch chan<- prometheus.Metric) error {
 	if strings.HasPrefix(config.BaseURL, "https://") {
 		c.client.EnableTLSInsecure()
 	}

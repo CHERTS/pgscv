@@ -2,13 +2,13 @@
 package collector
 
 import (
+	"context"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
-	"github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -50,65 +50,27 @@ func NewPostgresFunctionsCollector(constLabels labels, settings model.CollectorS
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresFunctionsCollector) Update(config Config, ch chan<- prometheus.Metric) error {
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+func (c *postgresFunctionsCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
+	conn := config.DB
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	var err error
 
-	collect := func(conn *store.DB) error {
-		res, err := conn.Query(postgresFunctionsQuery)
-
-		if err != nil {
-			log.Warnf("get functions stat failed: %s", err)
-			return err
-		}
-
-		stats := parsePostgresFunctionsStats(res, c.labelNames)
-
-		for _, stat := range stats {
-			ch <- c.calls.newConstMetric(stat.calls, stat.database, stat.schema, stat.function)
-			ch <- c.totaltime.newConstMetric(stat.totaltime, stat.database, stat.schema, stat.function)
-			ch <- c.selftime.newConstMetric(stat.selftime, stat.database, stat.schema, stat.function)
-		}
-		return nil
-	}
-
-	if config.DatabasesRE == nil {
-		// service discovery case
-		err = collect(conn)
-		return err
-	}
-
-	databases, err := listDatabases(conn)
-	if err != nil {
-		return err
-	}
-
-	pgconfig, err := pgx.ParseConfig(config.ConnString)
-	if err != nil {
-		return err
-	}
-
-	for _, d := range databases {
-		// Skip database if not matched to allowed.
-		if !config.DatabasesRE.MatchString(d) {
-			continue
-		}
-
-		pgconfig.Database = d
-		conn, err := store.NewWithConfig(pgconfig)
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresFunctions, postgresFunctionsQuery)
+	if res == nil {
+		res, err = conn.Query(ctx, postgresFunctionsQuery)
 		if err != nil {
 			return err
 		}
-		defer conn.Close()
-		err = collect(conn)
-		if err != nil {
-			return err
-		}
+		saveToCache(collectorPostgresFunctions, wg, config.CacheConfig, cacheKey, res)
 	}
 
+	stats := parsePostgresFunctionsStats(res, c.labelNames)
+	for _, stat := range stats {
+		ch <- c.calls.newConstMetric(stat.calls, stat.database, stat.schema, stat.function)
+		ch <- c.totaltime.newConstMetric(stat.totaltime, stat.database, stat.schema, stat.function)
+		ch <- c.selftime.newConstMetric(stat.selftime, stat.database, stat.schema, stat.function)
+	}
 	return nil
 }
 

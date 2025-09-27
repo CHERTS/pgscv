@@ -2,12 +2,12 @@
 package collector
 
 import (
+	"context"
 	"strconv"
 	"strings"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -53,21 +53,17 @@ func NewPgbouncerPoolsCollector(constLabels labels, settings model.CollectorSett
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *pgbouncerPoolsCollector) Update(config Config, ch chan<- prometheus.Metric) error {
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+func (c *pgbouncerPoolsCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
+	conn := config.DB
 
-	res, err := conn.Query(poolsQuery)
+	res, err := conn.Query(ctx, poolsQuery)
 	if err != nil {
 		return err
 	}
 
 	poolsStats := parsePgbouncerPoolsStats(res, c.labelNames)
 
-	res, err = conn.Query(clientsQuery)
+	res, err = conn.Query(ctx, clientsQuery)
 	if err != nil {
 		return err
 	}

@@ -2,11 +2,12 @@
 package collector
 
 import (
+	"context"
 	"strconv"
+	"sync"
 
 	"github.com/cherts/pgscv/internal/log"
 	"github.com/cherts/pgscv/internal/model"
-	"github.com/cherts/pgscv/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -134,16 +135,19 @@ func NewPostgresBgwriterCollector(constLabels labels, settings model.CollectorSe
 }
 
 // Update method collects statistics, parse it and produces metrics that are sent to Prometheus.
-func (c *postgresBgwriterCollector) Update(config Config, ch chan<- prometheus.Metric) error {
-	conn, err := store.New(config.ConnString, config.ConnTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+func (c *postgresBgwriterCollector) Update(ctx context.Context, config Config, ch chan<- prometheus.Metric) error {
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	var err error
 
-	res, err := conn.Query(selectBgwriterQuery(config.pgVersion.Numeric))
-	if err != nil {
-		return err
+	query := selectBgwriterQuery(config.pgVersion.Numeric)
+	cacheKey, res, _ := getFromCache(config.CacheConfig, config.ConnString, collectorPostgresBgWriter, query)
+	if res == nil {
+		res, err = config.DB.Query(ctx, query)
+		if err != nil {
+			return err
+		}
+		saveToCache(collectorPostgresBgWriter, wg, config.CacheConfig, cacheKey, res)
 	}
 
 	stats := parsePostgresBgwriterStats(res)

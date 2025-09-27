@@ -3,6 +3,7 @@ package collector
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -46,7 +47,7 @@ func NewMeminfoCollector(constLabels labels, settings model.CollectorSettings) (
 }
 
 // Update method collects network interfaces statistics.
-func (c *meminfoCollector) Update(_ Config, ch chan<- prometheus.Metric) error {
+func (c *meminfoCollector) Update(_ context.Context, _ Config, ch chan<- prometheus.Metric) error {
 	meminfo, err := getMeminfoStats()
 	if err != nil {
 		return fmt.Errorf("get /proc/meminfo stats failed: %s", err)
